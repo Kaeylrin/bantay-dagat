@@ -1,0 +1,129 @@
+/** @import must precede all other statements */
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /**
+   * Tailwind CSS theme
+   * tailwind.config.ts expects the following color variables to be expressed as HSL values.
+   * A different format will require also updating the theme in tailwind.config.ts.
+  */
+  :root {
+    /* BantayDagat Design System */
+    /* Background and surfaces */
+    --background: 206 93% 97%; /* #F0F9FF Sky White */
+    --foreground: 210 60% 16%; /* #164E63 Deep Teal */
+
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 210 60% 16%; /* Deep Teal */
+
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 210 60% 16%; /* Deep Teal */
+
+    /* Primary and secondary */
+    --primary: 198 82% 39%; /* #0284C7 Reef Blue */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 206 100% 94%; /* #E0F2FE Lagoon */
+    --secondary-foreground: 210 60% 16%; /* Deep Teal */
+
+    --muted: 206 100% 94%; /* Lagoon */
+    --muted-foreground: 210 40% 50%;
+
+    --accent: 198 91% 48%; /* #0EA5E9 Wave */
+    --accent-foreground: 0 0% 100%;
+
+    /* Status colors */
+    --safe: 136 67% 45%; /* #16A34A Green */
+    --caution: 38 92% 50%; /* #D97706 Amber */
+    --danger: 0 86% 50%; /* #DC2626 Red */
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 206 100% 94%; /* Lagoon */
+    --input: 206 100% 94%;
+    --ring: 198 82% 39%; /* Reef Blue */
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 206 93% 97%; /* Sky White */
+    --sidebar-foreground: 210 60% 16%; /* Deep Teal */
+    --sidebar-primary: 198 82% 39%; /* Reef Blue */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 206 100% 94%; /* Lagoon */
+    --sidebar-accent-foreground: 210 60% 16%;
+    --sidebar-border: 206 100% 94%;
+    --sidebar-ring: 198 82% 39%;
+  }
+
+  .dark {
+    --background: 210 60% 16%;
+    --foreground: 0 0% 100%;
+
+    --card: 210 60% 20%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 210 60% 20%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 198 91% 48%;
+    --primary-foreground: 210 60% 16%;
+
+    --secondary: 206 93% 30%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 206 93% 30%;
+    --muted-foreground: 206 100% 80%;
+
+    --accent: 198 91% 48%;
+    --accent-foreground: 210 60% 16%;
+
+    --safe: 136 67% 55%;
+    --caution: 38 92% 60%;
+    --danger: 0 86% 60%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 206 93% 30%;
+    --input: 206 93% 30%;
+    --ring: 198 91% 48%;
+    --sidebar-background: 210 60% 18%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 198 91% 48%;
+    --sidebar-primary-foreground: 210 60% 16%;
+    --sidebar-accent: 206 93% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 206 93% 30%;
+    --sidebar-ring: 198 91% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-header;
+  }
+
+  :where(p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, td, th) {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  pre,
+  code {
+    overflow-x: auto;
+    white-space: pre;
+  }
+}
