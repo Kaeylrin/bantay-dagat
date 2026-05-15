@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, ShieldAlert, Lock, Clock } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, Lock, Clock } from "lucide-react";
 import {
   db, auth, ref, get, set,
   signInWithEmailAndPassword, signOut,
@@ -11,7 +11,7 @@ import { LOGIN_FLAG_KEY } from "@/App";
 
 const MAX_ATTEMPTS   = 5;
 const LOCKOUT_MS     = 30 * 60 * 1000; // 30 minutes
-const LS_KEY_RANGER  = "bd_ranger_lockout_email";
+const LS_KEY_ADMIN   = "bd_admin_lockout_email";
 
 function getAttemptKey(email) {
   return `${DB_PATHS.LOGIN_ATTEMPTS}/${sanitiseEmailKey(email)}`;
@@ -38,11 +38,11 @@ function formatMs(ms) {
   return `${m}m ${s.toString().padStart(2, "0")}s`;
 }
 
-export default function Login() {
+export default function AdminLogin() {
   const navigate = useNavigate();
   const [email,        setEmail]        = useState(() => {
     // Restore last-attempted email so lockout state is fetched on mount
-    try { return localStorage.getItem(LS_KEY_RANGER) || ""; } catch { return ""; }
+    try { return localStorage.getItem(LS_KEY_ADMIN) || ""; } catch { return ""; }
   });
   const [password,     setPassword]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -96,24 +96,57 @@ export default function Login() {
     try {
       const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
 
-      // Check if account is disabled in the database
+      // Check if user has a profile
       const userSnap = await get(ref(db, `${DB_PATHS.USERS}/${credential.user.uid}`));
-      const profile = userSnap.val();
+      let profile = userSnap.val();
 
-      // Reject admin accounts — they must use the admin login page
-      if (profile && profile.role === "admin") {
+      if (!profile) {
+        // Bootstrap: First-time admin login — auto-create admin profile
+        // This handles the chicken-and-egg problem where rules require
+        // an admin profile to exist but it hasn't been created yet.
+        // The Firebase rules for /users/$uid allow writing if the writer
+        // is an admin, so we temporarily update rules to allow self-write,
+        // OR the rules already allow $uid === auth.uid for reads.
+        // We need open write rules for the bootstrap — use set on own UID.
+        const adminProfile = {
+          email: credential.user.email,
+          displayName: "Administrator",
+          role: "admin",
+          isActive: true,
+          createdAt: Date.now(),
+        };
+        try {
+          await set(ref(db, `${DB_PATHS.USERS}/${credential.user.uid}`), adminProfile);
+          profile = adminProfile;
+        } catch (writeErr) {
+          // Can't write profile — rules are too restrictive for bootstrap
+          await signOut(auth);
+          sessionStorage.removeItem(LOGIN_FLAG_KEY);
+          setError(
+            "Admin profile doesn't exist and couldn't be created. " +
+            "Please add this account's profile to Firebase RTDB at /users/" +
+            credential.user.uid + " with role: 'admin'."
+          );
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      if (profile.role !== "admin") {
         await signOut(auth);
         sessionStorage.removeItem(LOGIN_FLAG_KEY);
-        setError("Admin accounts cannot log in here. Please use the Administrator Login page.");
+        const msg = profile.role === "ranger"
+          ? "This login is for administrators only. Please use the Ranger / Staff Login page."
+          : "Access denied. This login is for administrators only.";
+        setError(msg);
         setIsLoading(false);
         return;
       }
 
-      if (profile && profile.isActive === false) {
-        // Account is disabled — sign out immediately
+      if (profile.isActive === false) {
         await signOut(auth);
         sessionStorage.removeItem(LOGIN_FLAG_KEY);
-        setError("Your account has been disabled. Contact an administrator.");
+        setError("Your account has been disabled.");
         setIsLoading(false);
         return;
       }
@@ -123,10 +156,10 @@ export default function Login() {
         failCount: 0,
         lockedUntil: null,
       });
-      try { localStorage.removeItem(LS_KEY_RANGER); } catch {}
+      try { localStorage.removeItem(LS_KEY_ADMIN); } catch {}
 
       sessionStorage.removeItem(LOGIN_FLAG_KEY);
-      navigate("/dashboard", { replace: true });
+      navigate("/admin", { replace: true });
     } catch (err) {
       setHasAttempted(true);
       const newFail = failCount + 1;
@@ -134,9 +167,8 @@ export default function Login() {
       const newLockedUntil = shouldLock ? Date.now() + LOCKOUT_MS : null;
 
       // Persist email to localStorage so lockout survives page refresh
-      try { localStorage.setItem(LS_KEY_RANGER, email.trim()); } catch {}
+      try { localStorage.setItem(LS_KEY_ADMIN, email.trim()); } catch {}
 
-      // Persist to Firebase so lockout survives page refresh / other devices
       await set(ref(db, getAttemptKey(email)), {
         failCount: newFail,
         lockedUntil: newLockedUntil,
@@ -146,9 +178,7 @@ export default function Login() {
       setFailCount(newFail);
       if (shouldLock) {
         setLockedUntil(newLockedUntil);
-        setError(
-          `Too many failed attempts. Account locked for 30 minutes.`
-        );
+        setError("Too many failed attempts. Account locked for 30 minutes.");
       } else {
         const left = MAX_ATTEMPTS - newFail;
         let msg = "Invalid email or password.";
@@ -162,32 +192,31 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Branding */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
-            <ShieldAlert className="w-8 h-8 text-white" />
+          <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20">
+            <ShieldCheck className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-header font-bold text-foreground mb-1">BantayDagat</h1>
-          <p className="text-muted-foreground text-sm">IoT-Based Water Quality Monitoring</p>
-          <p className="text-xs text-muted-foreground mt-1">Ranger / Staff Login</p>
+          <h1 className="text-3xl font-header font-bold text-white mb-1">BantayDagat</h1>
+          <p className="text-slate-400 text-sm">Administrator Access Portal</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-secondary p-8">
-          <h2 className="text-xl font-header font-bold text-foreground mb-6 flex items-center gap-2">
-            <Lock className="w-5 h-5 text-primary" />
-            Ranger Login
+        <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-2xl border border-slate-700/50 p-8">
+          <h2 className="text-xl font-header font-bold text-white mb-6 flex items-center gap-2">
+            <Lock className="w-5 h-5 text-emerald-400" />
+            Admin Login
           </h2>
 
           {/* Lockout banner */}
           {isLocked && (
-            <div className="mb-4 bg-danger/10 border border-danger/30 rounded-lg p-3 flex items-start gap-2">
-              <Clock className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+            <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-start gap-2">
+              <Clock className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-bold text-danger">Account Locked</p>
-                <p className="text-xs text-danger/80">
+                <p className="text-sm font-bold text-red-400">Account Locked</p>
+                <p className="text-xs text-red-400/80">
                   Too many failed attempts. Try again in{" "}
                   <span className="font-mono font-bold">{formatMs(remaining)}</span>.
                 </p>
@@ -197,40 +226,40 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-                Gmail Address
+              <label htmlFor="admin-email" className="block text-sm font-medium text-slate-300 mb-2">
+                Admin Gmail
               </label>
               <input
-                id="email"
+                id="admin-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="username"
-                placeholder="ranger.name@gmail.com"
+                placeholder="admin@gmail.com"
                 disabled={isLoading || isLocked}
-                className="w-full px-4 py-2 rounded-lg border border-secondary bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors disabled:opacity-60"
+                className="w-full px-4 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors disabled:opacity-60"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
+              <label htmlFor="admin-password" className="block text-sm font-medium text-slate-300 mb-2">
                 Password
               </label>
               <div className="relative">
                 <input
-                  id="password"
+                  id="admin-password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                   placeholder="••••••••"
                   disabled={isLoading || isLocked}
-                  className="w-full px-4 py-2 pr-10 rounded-lg border border-secondary bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors disabled:opacity-60"
+                  className="w-full px-4 py-2 pr-10 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors disabled:opacity-60"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -239,8 +268,8 @@ export default function Login() {
             </div>
 
             {error && (
-              <div className="bg-danger/10 border border-danger/30 rounded-lg p-3">
-                <p className="text-sm text-danger">{error}</p>
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
 
@@ -251,11 +280,11 @@ export default function Login() {
                   <div
                     key={i}
                     className={`h-1 flex-1 rounded-full transition-colors ${
-                      i < failCount ? "bg-danger" : "bg-secondary"
+                      i < failCount ? "bg-red-500" : "bg-slate-600"
                     }`}
                   />
                 ))}
-                <span className="text-xs text-muted-foreground ml-1">
+                <span className="text-xs text-slate-400 ml-1">
                   {MAX_ATTEMPTS - failCount} left
                 </span>
               </div>
@@ -264,24 +293,25 @@ export default function Login() {
             <button
               type="submit"
               disabled={isLoading || isLocked}
-              className="w-full bg-primary text-white font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium py-2.5 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-lg shadow-emerald-500/20"
             >
-              {isLoading ? "Logging in…" : "Login"}
+              {isLoading ? "Authenticating…" : "Access Admin Panel"}
             </button>
           </form>
+
+          <div className="mt-6 pt-4 border-t border-slate-700/50">
+            <Link
+              to="/login"
+              className="block text-center text-sm text-slate-400 hover:text-emerald-400 transition-colors"
+            >
+              ← Ranger / Staff Login
+            </Link>
+          </div>
         </div>
 
-        <div className="text-center mt-6 space-y-2">
-          <Link
-            to="/admin-login"
-            className="block text-xs text-muted-foreground hover:text-primary transition-colors"
-          >
-            Administrator Login →
-          </Link>
-          <p className="text-xs text-muted-foreground">
-            Sanctuary Marine Conservation System &mdash; Authorised Access Only
-          </p>
-        </div>
+        <p className="text-center text-xs text-slate-500 mt-6">
+          BantayDagat Administrative Console &mdash; Restricted Access
+        </p>
       </div>
     </div>
   );

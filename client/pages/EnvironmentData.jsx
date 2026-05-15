@@ -89,7 +89,7 @@ function WeatherPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="w-3 h-3 rounded-full bg-primary" />
@@ -157,7 +157,7 @@ function WeatherPanel() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {[
               {
                 icon: <Thermometer className="w-5 h-5 text-danger" />,
@@ -202,7 +202,7 @@ function WeatherPanel() {
 
           <div>
             <h4 className="text-sm font-header font-bold text-foreground mb-3">5-Day Forecast</h4>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
               {data.daily.time.map((date, i) => (
                 <div
                   key={date}
@@ -305,7 +305,7 @@ function TidalPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="w-3 h-3 rounded-full bg-accent" />
@@ -446,6 +446,7 @@ function TidalPanel() {
               Today's Full Tide Schedule
             </h4>
             <div className="bg-white rounded-xl border border-secondary shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-secondary/30 border-b border-secondary">
@@ -505,6 +506,7 @@ function TidalPanel() {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
 
@@ -512,7 +514,7 @@ function TidalPanel() {
             <p className="font-semibold text-foreground mb-2">
               Why Tidal Phase Matters for Sea Turtle Release
             </p>
-            <div className="grid grid-cols-2 gap-4 text-muted-foreground">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-muted-foreground">
               <div className="flex gap-2">
                 <span className="text-safe font-bold shrink-0">✓ Outgoing (Ebb) Tide:</span>
                 <span>Water moves away from shore. Released turtles are naturally carried seaward. Recommended release window.</span>
@@ -549,7 +551,7 @@ export default function EnvironmentData() {
 
   return (
     <Layout userEmail="staff@sanctuary.org">
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <div className="mb-6">
           <h2 className="text-2xl font-header font-bold text-foreground mb-1">
             Environmental Monitoring

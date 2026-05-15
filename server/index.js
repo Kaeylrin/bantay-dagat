@@ -1,7 +1,8 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { handleDemo } from "./routes/demo";
+import { handleDeleteUser, requireAdmin } from "./routes/admin-auth";
+
 export function createServer() {
     const app = express();
     // Middleware
@@ -10,13 +11,10 @@ export function createServer() {
     app.use(express.urlencoded({
         extended: true
     }));
-    // Example API routes
-    app.get("/api/ping", (_req, res)=>{
-        const ping = process.env.PING_MESSAGE ?? "ping";
-        res.json({
-            message: ping
-        });
-    });
-    app.get("/api/demo", handleDemo);
+
+    // Admin routes (require authenticated admin)
+    app.delete("/api/admin/delete-user/:uid", requireAdmin, handleDeleteUser);
+
     return app;
 }
+
