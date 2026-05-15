@@ -1,89 +1,288 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-export default function Login() {
-    const navigate = useNavigate();
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
-    const handleSubmit = async (e)=>{
-        e.preventDefault();
-        setError("");
-        setIsLoading(true);
-        // Simulate login
-        setTimeout(()=>{
-            if (email && password) {
-                // Store a simple auth token
-                localStorage.setItem("authToken", "token_" + Date.now());
-                localStorage.setItem("userEmail", email);
-                navigate("/dashboard");
-            } else {
-                setError("Please enter both email and password");
-            }
-            setIsLoading(false);
-        }, 500);
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Eye, EyeOff, ShieldAlert, Lock, Clock } from "lucide-react";
+import {
+  db, auth, ref, get, set,
+  signInWithEmailAndPassword, signOut,
+  DB_PATHS,
+} from "@/lib/firebase";
+import { sanitiseEmailKey } from "@/lib/authContext";
+import { LOGIN_FLAG_KEY } from "@/App";
+
+const MAX_ATTEMPTS   = 5;
+const LOCKOUT_MS     = 30 * 60 * 1000; // 30 minutes
+const LS_KEY_RANGER  = "bd_ranger_lockout_email";
+
+function getAttemptKey(email) {
+  return `${DB_PATHS.LOGIN_ATTEMPTS}/${sanitiseEmailKey(email)}`;
+}
+
+function useCountdown(lockedUntil) {
+  const [remaining, setRemaining] = useState(0);
+  useEffect(() => {
+    if (!lockedUntil) { setRemaining(0); return; }
+    const tick = () => {
+      const diff = lockedUntil - Date.now();
+      setRemaining(diff > 0 ? diff : 0);
     };
-    return <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lockedUntil]);
+  return remaining;
+}
+
+function formatMs(ms) {
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  return `${m}m ${s.toString().padStart(2, "0")}s`;
+}
+
+export default function Login() {
+  const navigate = useNavigate();
+  const [email,        setEmail]        = useState(() => {
+    // Restore last-attempted email so lockout state is fetched on mount
+    try { return localStorage.getItem(LS_KEY_RANGER) || ""; } catch { return ""; }
+  });
+  const [password,     setPassword]     = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error,        setError]        = useState("");
+  const [isLoading,    setIsLoading]    = useState(false);
+  const [lockedUntil,  setLockedUntil]  = useState(null);
+  const [failCount,    setFailCount]    = useState(0);
+  const [hasAttempted, setHasAttempted]  = useState(false);
+  const remaining = useCountdown(lockedUntil);
+
+  // Check lockout state when email changes
+  useEffect(() => {
+    if (!email.includes("@")) return;
+    let active = true;
+    get(ref(db, getAttemptKey(email))).then((snap) => {
+      if (!active) return;
+      const data = snap.val();
+      if (data) {
+        setFailCount(data.failCount ?? 0);
+        if (data.lockedUntil && data.lockedUntil > Date.now()) {
+          setLockedUntil(data.lockedUntil);
+        } else {
+          setLockedUntil(null);
+        }
+      } else {
+        setFailCount(0);
+        setLockedUntil(null);
+      }
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [email]);
+
+  const isLocked = lockedUntil && remaining > 0;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!email.trim() || !password) {
+      setError("Please enter both email and password.");
+      return;
+    }
+
+    if (isLocked) {
+      setError(`Account is locked. Try again in ${formatMs(remaining)}.`);
+      return;
+    }
+
+    setIsLoading(true);
+    sessionStorage.setItem(LOGIN_FLAG_KEY, "1");
+    try {
+      const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
+
+      // Check if account is disabled in the database
+      const userSnap = await get(ref(db, `${DB_PATHS.USERS}/${credential.user.uid}`));
+      const profile = userSnap.val();
+
+      // Reject admin accounts — they must use the admin login page
+      if (profile && profile.role === "admin") {
+        await signOut(auth);
+        sessionStorage.removeItem(LOGIN_FLAG_KEY);
+        setError("Admin accounts cannot log in here. Please use the Administrator Login page.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (profile && profile.isActive === false) {
+        // Account is disabled — sign out immediately
+        await signOut(auth);
+        sessionStorage.removeItem(LOGIN_FLAG_KEY);
+        setError("Your account has been disabled. Contact an administrator.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Clear lockout on success
+      await set(ref(db, getAttemptKey(email)), {
+        failCount: 0,
+        lockedUntil: null,
+      });
+      try { localStorage.removeItem(LS_KEY_RANGER); } catch {}
+
+      sessionStorage.removeItem(LOGIN_FLAG_KEY);
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setHasAttempted(true);
+      const newFail = failCount + 1;
+      const shouldLock = newFail >= MAX_ATTEMPTS;
+      const newLockedUntil = shouldLock ? Date.now() + LOCKOUT_MS : null;
+
+      // Persist email to localStorage so lockout survives page refresh
+      try { localStorage.setItem(LS_KEY_RANGER, email.trim()); } catch {}
+
+      // Persist to Firebase so lockout survives page refresh / other devices
+      await set(ref(db, getAttemptKey(email)), {
+        failCount: newFail,
+        lockedUntil: newLockedUntil,
+        lastAttempt: Date.now(),
+      }).catch(() => {});
+
+      setFailCount(newFail);
+      if (shouldLock) {
+        setLockedUntil(newLockedUntil);
+        setError(
+          `Too many failed attempts. Account locked for 30 minutes.`
+        );
+      } else {
+        const left = MAX_ATTEMPTS - newFail;
+        let msg = "Invalid email or password.";
+        if (left <= 2) msg += ` ${left} attempt${left === 1 ? "" : "s"} remaining before lockout.`;
+        setError(msg);
+      }
+    } finally {
+      sessionStorage.removeItem(LOGIN_FLAG_KEY);
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        { /* Logo/Branding */ }
+        {/* Branding */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-header font-bold text-foreground mb-2">
-            BantayDagat
-          </h1>
-          <p className="text-muted-foreground">
-            IoT-Based Water Quality Monitoring
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Sea Turtle Release Safety System
-          </p>
+          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
+            <ShieldAlert className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-header font-bold text-foreground mb-1">BantayDagat</h1>
+          <p className="text-muted-foreground text-sm">IoT-Based Water Quality Monitoring</p>
+          <p className="text-xs text-muted-foreground mt-1">Ranger / Staff Login</p>
         </div>
 
-        { /* Login Card */ }
+        {/* Card */}
         <div className="bg-white rounded-xl shadow-sm border border-secondary p-8">
-          <h2 className="text-xl font-header font-bold text-foreground mb-6">
-            Staff Login
+          <h2 className="text-xl font-header font-bold text-foreground mb-6 flex items-center gap-2">
+            <Lock className="w-5 h-5 text-primary" />
+            Ranger Login
           </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            { /* Email Input */ }
+          {/* Lockout banner */}
+          {isLocked && (
+            <div className="mb-4 bg-danger/10 border border-danger/30 rounded-lg p-3 flex items-start gap-2">
+              <Clock className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-danger">Account Locked</p>
+                <p className="text-xs text-danger/80">
+                  Too many failed attempts. Try again in{" "}
+                  <span className="font-mono font-bold">{formatMs(remaining)}</span>.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-                Email Address
+                Gmail Address
               </label>
-              <input id="email" type="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="staff@sanctuary.org" className="w-full px-4 py-2 rounded-lg border border-secondary bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"/>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
+                placeholder="ranger.name@gmail.com"
+                disabled={isLoading || isLocked}
+                className="w-full px-4 py-2 rounded-lg border border-secondary bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors disabled:opacity-60"
+              />
             </div>
 
-            { /* Password Input */ }
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
                 Password
               </label>
-              <input id="password" type="password" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="••••••••" className="w-full px-4 py-2 rounded-lg border border-secondary bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"/>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  disabled={isLoading || isLocked}
+                  className="w-full px-4 py-2 pr-10 rounded-lg border border-secondary bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
-            { /* Error Message */ }
-            {error && <div className="bg-danger/10 border border-danger/30 rounded-lg p-3">
+            {error && (
+              <div className="bg-danger/10 border border-danger/30 rounded-lg p-3">
                 <p className="text-sm text-danger">{error}</p>
-              </div>}
+              </div>
+            )}
 
-            { /* Login Button */ }
-            <button type="submit" disabled={isLoading} className="w-full bg-primary text-white font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-6">
-              {isLoading ? "Logging in..." : "Login"}
+            {/* Attempt indicator — only shown after a failed attempt on this visit */}
+            {hasAttempted && failCount > 0 && !isLocked && (
+              <div className="flex gap-1 items-center">
+                {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-1 flex-1 rounded-full transition-colors ${
+                      i < failCount ? "bg-danger" : "bg-secondary"
+                    }`}
+                  />
+                ))}
+                <span className="text-xs text-muted-foreground ml-1">
+                  {MAX_ATTEMPTS - failCount} left
+                </span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading || isLocked}
+              className="w-full bg-primary text-white font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+            >
+              {isLoading ? "Logging in…" : "Login"}
             </button>
           </form>
-
-          { /* Demo Note */ }
-          <div className="mt-6 p-3 bg-secondary/50 rounded-lg border border-secondary">
-            <p className="text-xs text-muted-foreground">
-              Demo: Use any email and password to login. This is a demonstration system.
-            </p>
-          </div>
         </div>
 
-        { /* Footer */ }
-        <p className="text-center text-xs text-muted-foreground mt-8">
-          Sanctuary Marine Conservation System
-        </p>
+        <div className="text-center mt-6 space-y-2">
+          <Link
+            to="/admin-login"
+            className="block text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            Administrator Login →
+          </Link>
+          <p className="text-xs text-muted-foreground">
+            Sanctuary Marine Conservation System &mdash; Authorised Access Only
+          </p>
+        </div>
       </div>
-    </div>;
+    </div>
+  );
 }

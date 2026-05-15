@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import {
   Thermometer,
+  Wind,
   Droplets,
   TestTube,
   Eye,
@@ -11,49 +12,50 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
-import { db, ref, onValue, off } from "@/lib/firebase";
+import { db, ref, onValue, off, mapArduinoReading, DB_PATHS } from "@/lib/firebase";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SENSOR CONFIGURATION
-//
-// Defines each sensor's display name, Firebase field key, unit, icon, and
-// the safe / caution threshold ranges used for status evaluation.
-//
-// Firebase path expected:  /sensor_data/latest
-// Fields expected:         temperature, humidity, ph, turbidity
+// Sensor config — 5 sensors matching Arduino output
+// (Water Level removed — Arduino does not send it)
 // ─────────────────────────────────────────────────────────────────────────────
 const SENSOR_CONFIG = [
   {
-    key:   "temperature",
-    name:  "Temperature",
-    unit:  "°C",
-    icon:  Thermometer,
+    key:       "air_temperature",
+    name:      "Air Temp",
+    unit:      "°C",
+    icon:      Wind,
+    threshold: { safe: [20, 35], caution: [15, 38] },
+  },
+  {
+    key:       "temperature",
+    name:      "Water Temp",
+    unit:      "°C",
+    icon:      Thermometer,
     threshold: { safe: [25, 32], caution: [20, 35] },
   },
   {
-    key:   "humidity",
-    name:  "Humidity",
-    unit:  "%",
-    icon:  Droplets,
+    key:       "humidity",
+    name:      "Humidity",
+    unit:      "%",
+    icon:      Droplets,
     threshold: { safe: [50, 80], caution: [40, 90] },
   },
   {
-    key:   "ph",
-    name:  "pH Level",
-    unit:  "pH",
-    icon:  TestTube,
+    key:       "ph",
+    name:      "pH Level",
+    unit:      "pH",
+    icon:      TestTube,
     threshold: { safe: [6.8, 7.4], caution: [6.5, 7.8] },
   },
   {
-    key:   "turbidity",
-    name:  "Turbidity",
-    unit:  "NTU",
-    icon:  Eye,
+    key:       "turbidity",
+    name:      "Turbidity",
+    unit:      "NTU",
+    icon:      Eye,
     threshold: { safe: [0, 5], caution: [0, 10] },
   },
 ];
 
-// Derives safe / caution / danger from a numeric value and its thresholds
 function deriveStatus(value, threshold) {
   if (value === null || value === undefined) return "unknown";
   if (value < threshold.caution[0] || value > threshold.caution[1]) return "danger";
@@ -61,118 +63,67 @@ function deriveStatus(value, threshold) {
   return "safe";
 }
 
-function getStatusColor(status) {
-  switch (status) {
-    case "safe":    return "text-safe border-safe/20 bg-safe/5";
-    case "caution": return "text-caution border-caution/20 bg-caution/5";
-    case "danger":  return "text-danger border-danger/20 bg-danger/5";
-    default:        return "text-muted-foreground border-secondary bg-secondary/10";
-  }
-}
-
-function getStatusBadgeColor(status) {
-  switch (status) {
-    case "safe":    return "bg-safe/20 text-safe";
-    case "caution": return "bg-caution/20 text-caution";
-    case "danger":  return "bg-danger/20 text-danger";
-    default:        return "bg-secondary text-muted-foreground";
-  }
-}
-
-function getLineColor(status) {
-  switch (status) {
-    case "safe":    return "hsl(var(--safe))";
-    case "caution": return "hsl(var(--caution))";
-    case "danger":  return "hsl(var(--danger))";
-    default:        return "hsl(var(--muted-foreground))";
-  }
-}
+const statusCard  = (s) => ({ safe: "text-safe border-safe/20 bg-safe/5", caution: "text-caution border-caution/20 bg-caution/5", danger: "text-danger border-danger/20 bg-danger/5" }[s] ?? "text-muted-foreground border-secondary bg-secondary/10");
+const statusBadge = (s) => ({ safe: "bg-safe/20 text-safe", caution: "bg-caution/20 text-caution", danger: "bg-danger/20 text-danger" }[s] ?? "bg-secondary text-muted-foreground");
+const lineColor   = (s) => ({ safe: "hsl(var(--safe))", caution: "hsl(var(--caution))", danger: "hsl(var(--danger))" }[s] ?? "hsl(var(--muted-foreground))");
 
 export default function Dashboard() {
-  // latestReading  → the most recent sensor document from Firebase
-  // trendHistory   → last N readings used to plot the mini sparkline charts
-  // connectionState → "connecting" | "live" | "error"
-  // lastUpdated    → timestamp string of the last successful Firebase push
-  const [latestReading,  setLatestReading]  = useState(null);
-  const [trendHistory,   setTrendHistory]   = useState([]);
+  const [latestReading,   setLatestReading]   = useState(null);
+  const [trendHistory,    setTrendHistory]    = useState([]);
   const [connectionState, setConnectionState] = useState("connecting");
-  const [lastUpdated,    setLastUpdated]    = useState(null);
-  const [errorMessage,   setErrorMessage]   = useState(null);
+  const [lastUpdated,     setLastUpdated]     = useState(null);
+  const [errorMessage,    setErrorMessage]    = useState(null);
 
   useEffect(() => {
-    // ── LISTENER 1: Latest reading ──────────────────────────────────────────
-    // Listens to /sensor_data/latest in Firebase.
-    // The Arduino writes its most recent reading to this path after every cycle.
-    // onValue fires immediately with the current value, then again on every change.
-    const latestRef = ref(db, "sensor_data/latest");
+    // Listen to /bantaydagat/latest — Arduino overwrites this on every save
+    const latestRef  = ref(db, DB_PATHS.LATEST);
+    // Listen to /bantaydagat/readings — Arduino pushes history here
+    const historyRef = ref(db, DB_PATHS.READINGS);
 
-    onValue(
-      latestRef,
-      (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          setLatestReading(data);
-          setConnectionState("live");
-          setLastUpdated(
-            data.timestamp
-              ? new Date(data.timestamp).toLocaleTimeString("en-PH")
-              : new Date().toLocaleTimeString("en-PH")
-          );
-          setErrorMessage(null);
-        } else {
-          // Path exists but no data has been written yet (Arduino not started)
-          setConnectionState("error");
-          setErrorMessage("No sensor data found. Waiting for Arduino to transmit.");
-        }
-      },
-      (error) => {
+    onValue(latestRef, (snap) => {
+      const raw = snap.val();
+      if (raw) {
+        const mapped = mapArduinoReading(raw);
+        setLatestReading(mapped);
+        setConnectionState("live");
+        setLastUpdated(
+          mapped.timestamp
+            ? new Date(mapped.timestamp).toLocaleTimeString("en-PH")
+            : new Date().toLocaleTimeString("en-PH")
+        );
+        setErrorMessage(null);
+      } else {
         setConnectionState("error");
-        setErrorMessage(error.message);
+        setErrorMessage("No sensor data found. Waiting for Arduino to transmit.");
       }
-    );
+    }, (err) => {
+      setConnectionState("error");
+      setErrorMessage(err.message);
+    });
 
-    // ── LISTENER 2: Trend history ────────────────────────────────────────────
-    // Listens to /sensor_data/history for the last 20 readings.
-    // The Arduino pushes each reading here via Firebase push().
-    // This data feeds the mini sparkline charts on each sensor card.
-    const historyRef = ref(db, "sensor_data/history");
+    onValue(historyRef, (snap) => {
+      const data = snap.val();
+      if (data) {
+        const entries = Object.values(data)
+          .map(mapArduinoReading)
+          .filter(Boolean)
+          .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+          .slice(-20)
+          .map((e) => ({
+            time:            e.timestamp ? new Date(e.timestamp).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" }) : "--:--",
+            air_temperature: e.air_temperature ?? null,
+            temperature:     e.temperature     ?? null,
+            humidity:        e.humidity        ?? null,
+            ph:              e.ph              ?? null,
+            turbidity:       e.turbidity       ?? null,
+          }));
+        setTrendHistory(entries);
+      }
+    }, () => {});
 
-    onValue(
-      historyRef,
-      (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          // Firebase push() stores children with auto-generated keys.
-          // Convert the object to an array sorted by timestamp.
-          const entries = Object.values(data)
-            .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
-            .slice(-20) // keep last 20 readings for the sparkline
-            .map((entry) => ({
-              time: entry.timestamp
-                ? new Date(entry.timestamp).toLocaleTimeString("en-PH", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "--:--",
-              temperature: entry.temperature ?? null,
-              humidity:    entry.humidity    ?? null,
-              ph:          entry.ph          ?? null,
-              turbidity:   entry.turbidity   ?? null,
-            }));
-          setTrendHistory(entries);
-        }
-      },
-      () => {} // non-fatal: sparklines just stay empty
-    );
-
-    // Cleanup: detach both Firebase listeners when component unmounts
-    return () => {
-      off(latestRef);
-      off(historyRef);
-    };
+    return () => { off(latestRef); off(historyRef); };
   }, []);
 
-  // ── Build sensor display objects from live Firebase data ─────────────────
   const sensors = SENSOR_CONFIG.map((cfg) => {
     const value  = latestReading ? (latestReading[cfg.key] ?? null) : null;
     const status = deriveStatus(value, cfg.threshold);
@@ -184,26 +135,25 @@ export default function Dashboard() {
   const canRelease   = latestReading && dangerCount === 0 && cautionCount === 0;
 
   return (
-    <Layout userEmail="staff@sanctuary.org">
-      <div className="p-8">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
 
-        {/* ── Firebase Connection Banner ───────────────────────────────────── */}
+        {/* Connection Banner */}
         {connectionState === "connecting" && (
           <div className="mb-6 flex items-center gap-3 bg-secondary/40 border border-secondary rounded-xl px-5 py-3 text-sm text-muted-foreground">
             <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
-            Connecting to Firebase Realtime Database...
+            Connecting to Firebase Realtime Database…
           </div>
         )}
-
         {connectionState === "error" && (
           <div className="mb-6 flex items-center gap-3 bg-danger/10 border border-danger/30 rounded-xl px-5 py-3 text-sm text-danger">
             <WifiOff className="w-4 h-4 shrink-0" />
-            {errorMessage || "Unable to connect to Firebase. Check your network."}
+            {errorMessage || "Unable to connect to Firebase."}
           </div>
         )}
 
-        {/* ── Status Summary Bar ───────────────────────────────────────────── */}
-        <div className="mb-8 grid grid-cols-2 gap-4">
+        {/* Status Summary */}
+        <div className="mb-6 sm:mb-8 grid grid-cols-2 gap-3 sm:gap-4">
           <div className="bg-white rounded-xl p-4 border border-secondary shadow-sm">
             <p className="text-xs text-muted-foreground font-medium mb-2">CAUTION</p>
             <p className="text-3xl font-header font-bold text-caution">{cautionCount}</p>
@@ -216,28 +166,20 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── GO / NO-GO Decision Card ─────────────────────────────────────── */}
+        {/* GO / NO-GO */}
         {latestReading ? (
-          <div
-            className={`mb-8 rounded-xl p-8 border-2 shadow-md transition-all ${
-              canRelease
-                ? "bg-safe/10 border-safe/40"
-                : "bg-danger/10 border-danger/40"
-            }`}
-          >
+          <div className={`mb-6 sm:mb-8 rounded-xl p-5 sm:p-8 border-2 shadow-md transition-all ${canRelease ? "bg-safe/10 border-safe/40" : "bg-danger/10 border-danger/40"}`}>
             <div className="flex items-start gap-3">
               {canRelease
                 ? <CheckCircle2 className="w-8 h-8 text-safe shrink-0 mt-1" />
-                : <AlertTriangle className="w-8 h-8 text-danger shrink-0 mt-1" />
-              }
+                : <AlertTriangle className="w-8 h-8 text-danger shrink-0 mt-1" />}
               <div>
-                <h2 className="text-3xl font-header font-bold mb-2">
+                <h2 className="text-xl sm:text-3xl font-header font-bold mb-2">
                   {canRelease
                     ? <span className="text-safe">SAFE TO RELEASE</span>
-                    : <span className="text-danger">DO NOT RELEASE</span>
-                  }
+                    : <span className="text-danger">DO NOT RELEASE</span>}
                 </h2>
-                <p className={`text-lg font-medium ${canRelease ? "text-safe" : "text-danger"}`}>
+                <p className={`text-sm sm:text-lg font-medium ${canRelease ? "text-safe" : "text-danger"}`}>
                   {canRelease
                     ? "All water quality parameters are within safe thresholds for sea turtle release."
                     : "Water quality conditions are not suitable for safe release. Review alerts below."}
@@ -250,87 +192,51 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <RefreshCw className="w-8 h-8 text-muted-foreground animate-spin shrink-0" />
               <div>
-                <h2 className="text-2xl font-header font-bold text-muted-foreground mb-1">
-                  Awaiting Sensor Data
-                </h2>
-                <p className="text-muted-foreground">
-                  The release assessment will appear once the Arduino begins transmitting.
-                </p>
+                <h2 className="text-2xl font-header font-bold text-muted-foreground mb-1">Awaiting Sensor Data</h2>
+                <p className="text-muted-foreground">The release assessment will appear once the Arduino begins transmitting.</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* ── Sensor Cards ─────────────────────────────────────────────────── */}
+        {/* Sensor Cards */}
         <div className="mb-8">
-          <h3 className="text-lg font-header font-bold text-foreground mb-4">
-            Live Sensor Data
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <h3 className="text-lg font-header font-bold text-foreground mb-4">Live Sensor Data</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
             {sensors.map((sensor) => {
-              const Icon = sensor.icon;
-              // Extract this sensor's value from history for the sparkline
-              const sparkData = trendHistory.map((entry) => ({
-                time:  entry.time,
-                value: entry[sensor.key],
-              }));
-
+              const Icon      = sensor.icon;
+              const sparkData = trendHistory.map((e) => ({ time: e.time, value: e[sensor.key] }));
               return (
-                <div
-                  key={sensor.name}
-                  className={`bg-white rounded-xl p-6 border-2 shadow-sm hover:shadow-md transition-all ${getStatusColor(sensor.status)}`}
-                >
-                  {/* Icon and Status Badge */}
-                  <div className="flex items-start justify-between mb-4">
-                    <Icon className="w-6 h-6 text-foreground" />
-                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${getStatusBadgeColor(sensor.status)}`}>
+                <div key={sensor.key} className={`bg-white rounded-xl p-5 border-2 shadow-sm hover:shadow-md transition-all ${statusCard(sensor.status)}`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <Icon className="w-5 h-5 text-foreground" />
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusBadge(sensor.status)}`}>
                       {sensor.status === "unknown" ? "NO DATA" : sensor.status.toUpperCase()}
                     </span>
                   </div>
-
-                  {/* Parameter Name */}
-                  <p className="text-sm text-muted-foreground font-medium mb-3">
-                    {sensor.name}
-                  </p>
-
-                  {/* Value — shows dash when no data yet */}
-                  <div className="mb-4">
-                    <p className="text-4xl font-header font-bold text-foreground">
-                      {sensor.value !== null ? sensor.value : "--"}
+                  <p className="text-xs text-muted-foreground font-medium mb-2">{sensor.name}</p>
+                  <div className="mb-3">
+                    <p className="text-3xl font-header font-bold text-foreground">
+                      {sensor.value !== null ? Number(sensor.value).toFixed(1) : "--"}
                     </p>
-                    <p className="text-sm text-muted-foreground">{sensor.unit}</p>
+                    <p className="text-xs text-muted-foreground">{sensor.unit}</p>
                   </div>
-
-                  {/* Sparkline Trend Chart — from Firebase history */}
-                  <div className="h-12 -mx-2">
+                  <div className="h-10 -mx-1">
                     {sparkData.some((d) => d.value !== null) ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={sparkData}>
                           <XAxis dataKey="time" hide />
                           <YAxis hide />
                           <Tooltip
-                            contentStyle={{
-                              backgroundColor: "white",
-                              border: "1px solid hsl(var(--secondary))",
-                              borderRadius: "8px",
-                              padding: "8px",
-                            }}
-                            formatter={(value) => [`${value} ${sensor.unit}`, ""]}
+                            contentStyle={{ backgroundColor: "white", border: "1px solid hsl(var(--secondary))", borderRadius: "8px", padding: "6px", fontSize: "12px" }}
+                            formatter={(v) => [`${v} ${sensor.unit}`, ""]}
                           />
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            stroke={getLineColor(sensor.status)}
-                            dot={false}
-                            strokeWidth={2}
-                            isAnimationActive={false}
-                            connectNulls
-                          />
+                          <Line type="monotone" dataKey="value" stroke={lineColor(sensor.status)} dot={false} strokeWidth={2} isAnimationActive={false} connectNulls />
                         </LineChart>
                       </ResponsiveContainer>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <p className="text-xs text-muted-foreground">No history yet</p>
+                        <p className="text-xs text-muted-foreground">No history</p>
                       </div>
                     )}
                   </div>
@@ -340,17 +246,16 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Footer Info ──────────────────────────────────────────────────── */}
+        {/* Footer */}
         <div className="bg-secondary/30 rounded-xl p-4 border border-secondary">
           <p className="text-xs text-muted-foreground">
             {connectionState === "live"
-              ? `Live data from Firebase Realtime Database. Last updated: ${lastUpdated}`
+              ? `Live data · Firebase Realtime Database · Last updated: ${lastUpdated}`
               : connectionState === "connecting"
-              ? "Connecting to Firebase Realtime Database..."
-              : "Firebase connection unavailable. Check network or database rules."}
+              ? "Connecting to Firebase Realtime Database…"
+              : "Firebase connection unavailable."}
           </p>
         </div>
-
       </div>
     </Layout>
   );

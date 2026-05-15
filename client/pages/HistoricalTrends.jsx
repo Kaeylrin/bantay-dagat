@@ -11,18 +11,19 @@ import {
   ReferenceLine,
 } from "recharts";
 import { WifiOff, RefreshCw } from "lucide-react";
-import { db, ref, onValue, off } from "@/lib/firebase";
+import { db, ref, onValue, off, mapArduinoReading, DB_PATHS } from "@/lib/firebase";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Firebase path: /sensor_data/history
+// Firebase path: /bantaydagat/readings
 //
-// Each child pushed by the Arduino:
+// Each child pushed by the Arduino (mapped by mapArduinoReading):
 // {
-//   timestamp:   1713800000000,
-//   temperature: 28.3,
-//   humidity:    67.1,
-//   ph:          7.1,
-//   turbidity:   2.4
+//   timestamp:       1713800000000,
+//   air_temperature: 28.5,
+//   temperature:     28.3,
+//   humidity:        67.1,
+//   ph:              7.1,
+//   turbidity:       2.4
 // }
 //
 // "Last 24 Hours" filters entries from the past 86,400,000 ms
@@ -30,10 +31,11 @@ import { db, ref, onValue, off } from "@/lib/firebase";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const THRESHOLDS = {
-  temperature: { safeMin: 25, safeMax: 32 },
-  humidity:    { safeMin: 50, safeMax: 80 },
-  ph:          { safeMin: 6.8, safeMax: 7.4 },
-  turbidity:   { safeMin: 0,  safeMax: 5  },
+  air_temperature: { safeMin: 20, safeMax: 35 },
+  temperature:     { safeMin: 25, safeMax: 32 },
+  humidity:        { safeMin: 50, safeMax: 80 },
+  ph:              { safeMin: 6.8, safeMax: 7.4 },
+  turbidity:       { safeMin: 0,  safeMax: 5  },
 };
 
 const TIME_RANGES = {
@@ -48,19 +50,20 @@ export default function HistoricalTrends() {
   const [errorMessage,    setErrorMessage]    = useState(null);
 
   useEffect(() => {
-    const historyRef = ref(db, "sensor_data/history");
+    const historyRef = ref(db, DB_PATHS.READINGS);
 
     onValue(
       historyRef,
       (snapshot) => {
         const data = snapshot.val();
         if (data) {
-          // Convert Firebase object to sorted array
+          // Convert Firebase object to sorted array using mapping layer
           const entries = Object.values(data)
-            .filter((e) => e.timestamp)
+            .map(mapArduinoReading)
+            .filter((e) => e && e.timestamp)
             .sort((a, b) => a.timestamp - b.timestamp)
             .map((entry) => ({
-              timestamp:   entry.timestamp,
+              timestamp:       entry.timestamp,
               time: new Date(entry.timestamp).toLocaleTimeString("en-PH", {
                 hour:   "2-digit",
                 minute: "2-digit",
@@ -69,10 +72,11 @@ export default function HistoricalTrends() {
                 month: "short",
                 day:   "numeric",
               }),
-              temperature: entry.temperature ?? null,
-              humidity:    entry.humidity    ?? null,
-              ph:          entry.ph          ?? null,
-              turbidity:   entry.turbidity   ?? null,
+              air_temperature: entry.air_temperature ?? null,
+              temperature:     entry.temperature     ?? null,
+              humidity:        entry.humidity         ?? null,
+              ph:              entry.ph               ?? null,
+              turbidity:       entry.turbidity        ?? null,
             }));
           setAllHistory(entries);
           setConnectionState("live");
@@ -114,11 +118,11 @@ export default function HistoricalTrends() {
   };
 
   return (
-    <Layout userEmail="staff@sanctuary.org">
-      <div className="p-8">
+    <Layout>
+      <div className="p-4 sm:p-6 lg:p-8">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h2 className="text-2xl font-header font-bold text-foreground">
             Historical Water Quality Trends
           </h2>
@@ -166,12 +170,30 @@ export default function HistoricalTrends() {
         {hasData && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            {/* Temperature */}
+            {/* Air Temperature */}
             <div className="bg-white rounded-xl p-6 border border-secondary shadow-sm">
               <h3 className="text-lg font-header font-bold text-foreground mb-4">
-                Temperature (°C)
+                Air Temperature (°C)
               </h3>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--secondary))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                  <YAxis domain={[0, 50]} />
+                  <Tooltip {...chartStyle} />
+                  <ReferenceLine y={THRESHOLDS.air_temperature.safeMin} stroke="hsl(var(--safe))" strokeDasharray="5 5" label={{ value: "Min Safe", position: "right", fontSize: 11 }} />
+                  <ReferenceLine y={THRESHOLDS.air_temperature.safeMax} stroke="hsl(var(--safe))" strokeDasharray="5 5" label={{ value: "Max Safe", position: "right", fontSize: 11 }} />
+                  <Line type="monotone" dataKey="air_temperature" stroke="hsl(var(--caution))" dot={false} strokeWidth={2} name="Air Temperature" connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Water Temperature */}
+            <div className="bg-white rounded-xl p-6 border border-secondary shadow-sm">
+              <h3 className="text-lg font-header font-bold text-foreground mb-4">
+                Water Temperature (°C)
+              </h3>
+              <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--secondary))" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
@@ -179,7 +201,7 @@ export default function HistoricalTrends() {
                   <Tooltip {...chartStyle} />
                   <ReferenceLine y={THRESHOLDS.temperature.safeMin} stroke="hsl(var(--safe))" strokeDasharray="5 5" label={{ value: "Min Safe", position: "right", fontSize: 11 }} />
                   <ReferenceLine y={THRESHOLDS.temperature.safeMax} stroke="hsl(var(--safe))" strokeDasharray="5 5" label={{ value: "Max Safe", position: "right", fontSize: 11 }} />
-                  <Line type="monotone" dataKey="temperature" stroke="hsl(var(--primary))" dot={false} strokeWidth={2} name="Temperature" connectNulls />
+                  <Line type="monotone" dataKey="temperature" stroke="hsl(var(--primary))" dot={false} strokeWidth={2} name="Water Temperature" connectNulls />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -189,7 +211,7 @@ export default function HistoricalTrends() {
               <h3 className="text-lg font-header font-bold text-foreground mb-4">
                 Humidity (%)
               </h3>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--secondary))" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
@@ -207,7 +229,7 @@ export default function HistoricalTrends() {
               <h3 className="text-lg font-header font-bold text-foreground mb-4">
                 pH Level
               </h3>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--secondary))" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
@@ -221,15 +243,15 @@ export default function HistoricalTrends() {
             </div>
 
             {/* Turbidity */}
-            <div className="bg-white rounded-xl p-6 border border-secondary shadow-sm">
+            <div className="bg-white rounded-xl p-6 border border-secondary shadow-sm lg:col-span-2">
               <h3 className="text-lg font-header font-bold text-foreground mb-4">
                 Turbidity (NTU)
               </h3>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--secondary))" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                  <YAxis domain={[0, 10]} />
+                  <YAxis domain={[0, 30]} />
                   <Tooltip {...chartStyle} />
                   <ReferenceLine y={THRESHOLDS.turbidity.safeMax} stroke="hsl(var(--safe))" strokeDasharray="5 5" label={{ value: "Max Safe", position: "right", fontSize: 11 }} />
                   <Line type="monotone" dataKey="turbidity" stroke="hsl(var(--danger))" dot={false} strokeWidth={2} name="Turbidity" connectNulls />
@@ -243,7 +265,7 @@ export default function HistoricalTrends() {
         {/* ── Legend ───────────────────────────────────────────────────────── */}
         <div className="mt-6 bg-secondary/30 rounded-xl p-4 border border-secondary">
           <p className="text-sm font-medium text-foreground mb-3">Threshold Legend</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-safe" />
               <span className="text-sm text-muted-foreground">Safe Range</span>

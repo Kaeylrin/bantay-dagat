@@ -25,3 +25,8 @@ dist-ssr
 
 .config/
 !.env
+
+# Firebase Admin SDK service account key (NEVER commit)
+firebase-service-account*.json
+
+.vercel
