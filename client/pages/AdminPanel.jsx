@@ -92,7 +92,7 @@ function RangerItem({ ranger }) {
       const idToken = await auth.currentUser.getIdToken();
 
       // Call server endpoint to delete from Firebase Auth + RTDB
-      const response = await fetch(`/api/admin/delete-user/${ranger.uid}`, {
+      const response = await fetch(`/api/admin/delete-user?uid=${ranger.uid}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${idToken}`,
