@@ -91,9 +91,23 @@ export default function Login() {
       return;
     }
 
+    let actualFailCount = 0;
     setIsLoading(true);
     sessionStorage.setItem(LOGIN_FLAG_KEY, "1");
     try {
+      // Pre-check true lockout state to prevent race conditions on email change
+      const snap = await get(ref(db, getAttemptKey(email)));
+      const data = snap.val();
+      if (data && data.lockedUntil && data.lockedUntil > Date.now()) {
+        const diff = data.lockedUntil - Date.now();
+        setLockedUntil(data.lockedUntil);
+        setError(`Account is locked. Try again in ${formatMs(diff)}.`);
+        setIsLoading(false);
+        sessionStorage.removeItem(LOGIN_FLAG_KEY);
+        return;
+      }
+      actualFailCount = data?.failCount || 0;
+
       const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
 
       // Check if account is disabled in the database
@@ -129,7 +143,7 @@ export default function Login() {
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setHasAttempted(true);
-      const newFail = failCount + 1;
+      const newFail = actualFailCount + 1;
       const shouldLock = newFail >= MAX_ATTEMPTS;
       const newLockedUntil = shouldLock ? Date.now() + LOCKOUT_MS : null;
 
@@ -204,7 +218,13 @@ export default function Login() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError("");
+                  setHasAttempted(false);
+                  setFailCount(0);
+                  setLockedUntil(null);
+                }}
                 autoComplete="username"
                 placeholder="ranger.name@gmail.com"
                 disabled={isLoading || isLocked}
