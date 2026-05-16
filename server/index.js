@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { handleDeleteUser, requireAdmin } from "./routes/admin-auth";
+import { handleDeleteUser, requireAdmin } from "./routes/admin-auth.js";
 
 export function createServer() {
     const app = express();

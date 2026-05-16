@@ -1,11 +1,18 @@
 import admin from "firebase-admin";
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 // Initialize Firebase Admin SDK (only once)
 if (!admin.apps.length) {
   let credential;
 
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    credential = admin.credential.cert(serviceAccount);
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    const keyPath = resolve(process.cwd(), process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    const serviceAccount = JSON.parse(readFileSync(keyPath, "utf-8"));
     credential = admin.credential.cert(serviceAccount);
   } else {
     credential = admin.credential.applicationDefault();
