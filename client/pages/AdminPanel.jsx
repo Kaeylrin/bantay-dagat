@@ -100,9 +100,18 @@ function RangerItem({ ranger }) {
         },
       });
 
-      const result = await response.json();
+      const text = await response.text();
+      let result = {};
+      if (text) {
+        try {
+          result = JSON.parse(text);
+        } catch (err) {
+          throw new Error(`Server returned invalid response (Status: ${response.status}).`);
+        }
+      }
+
       if (!response.ok) {
-        throw new Error(result.error || "Failed to delete user.");
+        throw new Error(result.error || `Failed to delete user (Status: ${response.status}).`);
       }
 
       // RTDB removal is handled server-side, but also remove locally
