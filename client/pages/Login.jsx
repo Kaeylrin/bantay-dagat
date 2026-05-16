@@ -57,7 +57,7 @@ export default function Login() {
   useEffect(() => {
     if (!email.includes("@")) return;
     let active = true;
-    get(ref(db, getAttemptKey(email))).then((snap) => {
+    get(ref(db, getAttemptKey(email.trim()))).then((snap) => {
       if (!active) return;
       const data = snap.val();
       if (data) {
@@ -96,7 +96,7 @@ export default function Login() {
     sessionStorage.setItem(LOGIN_FLAG_KEY, "1");
     try {
       // Pre-check true lockout state to prevent race conditions on email change
-      const snap = await get(ref(db, getAttemptKey(email)));
+      const snap = await get(ref(db, getAttemptKey(email.trim())));
       const data = snap.val();
       if (data && data.lockedUntil && data.lockedUntil > Date.now()) {
         const diff = data.lockedUntil - Date.now();
@@ -133,7 +133,7 @@ export default function Login() {
       }
 
       // Clear lockout on success
-      await set(ref(db, getAttemptKey(email)), {
+      await set(ref(db, getAttemptKey(email.trim())), {
         failCount: 0,
         lockedUntil: null,
       });
@@ -151,7 +151,7 @@ export default function Login() {
       try { localStorage.setItem(LS_KEY_RANGER, email.trim()); } catch {}
 
       // Persist to Firebase so lockout survives page refresh / other devices
-      await set(ref(db, getAttemptKey(email)), {
+      await set(ref(db, getAttemptKey(email.trim())), {
         failCount: newFail,
         lockedUntil: newLockedUntil,
         lastAttempt: Date.now(),
