@@ -28,10 +28,18 @@ const adminAuth = admin.auth();
 const adminDb = admin.database();
 
 export default async function handler(req, res) {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    return res.status(200).end();
+  }
+
   // Only allow DELETE method
   if (req.method !== "DELETE") {
-    res.setHeader("Allow", "DELETE");
-    return res.status(405).json({ error: "Method not allowed." });
+    res.setHeader("Allow", "DELETE, OPTIONS");
+    return res.status(405).json({ error: `Method ${req.method} not allowed.` });
   }
 
   // ── Auth check ──

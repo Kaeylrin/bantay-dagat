@@ -13,7 +13,7 @@ export function createServer() {
     }));
 
     // Admin routes (require authenticated admin)
-    app.delete("/api/admin/delete-user/:uid", requireAdmin, handleDeleteUser);
+    app.delete("/api/admin/delete-user", requireAdmin, handleDeleteUser);
 
     return app;
 }

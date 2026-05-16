@@ -61,7 +61,7 @@ async function requireAdmin(req, res, next) {
  * Only accessible by authenticated admin users.
  */
 async function handleDeleteUser(req, res) {
-  const { uid } = req.params;
+  const uid = req.query.uid || req.params.uid;
 
   if (!uid) {
     return res.status(400).json({ error: "User UID is required." });
