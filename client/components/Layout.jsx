@@ -56,9 +56,12 @@ export default function Layout({ children }) {
   // Sidebar content (shared between desktop and mobile)
   const sidebarContent = (
     <>
-      <div className="p-6 border-b border-secondary">
-        <h1 className="text-lg font-header font-bold text-foreground">BantayDagat</h1>
-        <p className="text-xs text-muted-foreground mt-1">Water Quality Monitor</p>
+      <div className="p-6 border-b border-secondary flex items-center gap-3">
+        <img src="/bantay-dagat.png" alt="BantayDagat Logo" className="w-10 h-10 object-contain shrink-0" />
+        <div>
+          <h1 className="text-lg font-header font-bold text-foreground leading-none">BantayDagat</h1>
+          <p className="text-xs text-muted-foreground mt-1">Water Quality Monitor</p>
+        </div>
       </div>
 
       <nav className="flex-1 p-4 space-y-2">
