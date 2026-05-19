@@ -40,10 +40,7 @@ function formatMs(ms) {
 
 export default function AdminLogin() {
   const navigate = useNavigate();
-  const [email,        setEmail]        = useState(() => {
-    // Restore last-attempted email so lockout state is fetched on mount
-    try { return localStorage.getItem(LS_KEY_ADMIN) || ""; } catch { return ""; }
-  });
+  const [email,        setEmail]        = useState("");
   const [password,     setPassword]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error,        setError]        = useState("");
@@ -210,9 +207,7 @@ export default function AdminLogin() {
       <div className="w-full max-w-md">
         {/* Branding */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20">
-            <ShieldCheck className="w-8 h-8 text-white" />
-          </div>
+          <img src="/bantay-dagat.png" alt="BantayDagat Logo" className="w-24 h-24 mx-auto mb-4 drop-shadow-lg object-contain" />
           <h1 className="text-3xl font-header font-bold text-white mb-1">BantayDagat</h1>
           <p className="text-slate-400 text-sm">Administrator Access Portal</p>
         </div>

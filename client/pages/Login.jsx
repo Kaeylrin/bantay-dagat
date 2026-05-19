@@ -40,10 +40,7 @@ function formatMs(ms) {
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email,        setEmail]        = useState(() => {
-    // Restore last-attempted email so lockout state is fetched on mount
-    try { return localStorage.getItem(LS_KEY_RANGER) || ""; } catch { return ""; }
-  });
+  const [email,        setEmail]        = useState("");
   const [password,     setPassword]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error,        setError]        = useState("");
@@ -180,9 +177,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Branding */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
-            <ShieldAlert className="w-8 h-8 text-white" />
-          </div>
+          <img src="/bantay-dagat.png" alt="BantayDagat Logo" className="w-24 h-24 mx-auto mb-4 drop-shadow-md object-contain" />
           <h1 className="text-3xl font-header font-bold text-foreground mb-1">BantayDagat</h1>
           <p className="text-muted-foreground text-sm">IoT-Based Water Quality Monitoring</p>
           <p className="text-xs text-muted-foreground mt-1">Ranger / Staff Login</p>
