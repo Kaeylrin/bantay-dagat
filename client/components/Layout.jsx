@@ -31,6 +31,9 @@ export default function Layout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
+  // Logout modal state
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -92,7 +95,7 @@ export default function Layout({ children }) {
 
       <div className="p-4 border-t border-secondary">
         <button
-          onClick={logout}
+          onClick={() => setShowLogoutModal(true)}
           className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-foreground hover:bg-secondary transition-colors font-medium text-sm"
         >
           <LogOut className="w-5 h-5" />
@@ -172,7 +175,7 @@ export default function Layout({ children }) {
                   Role: <span className="font-bold ml-1 capitalize">{userRole}</span>
                 </div>
                 <button
-                  onClick={() => { setMenuOpen(false); logout(); }}
+                  onClick={() => { setMenuOpen(false); setShowLogoutModal(true); }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
                 >
                   <LogOut className="w-4 h-4" /> Logout
@@ -184,6 +187,41 @@ export default function Layout({ children }) {
 
         <main className="flex-1 overflow-auto bg-background">{children}</main>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowLogoutModal(false)} />
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6 relative z-10 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center shrink-0">
+                <LogOut className="w-5 h-5 text-danger" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">Confirm Logout</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-6">
+              Are you sure you want to log out of your account? You will need to sign in again to access the dashboard.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowLogoutModal(false);
+                  logout();
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-danger text-white hover:bg-danger/90 transition-colors"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

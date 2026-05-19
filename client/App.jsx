@@ -34,7 +34,7 @@ function ProtectedRoute({ element }) {
 function AdminRoute({ element }) {
   const { currentUser, userRole, loading } = useAuth();
   if (loading) return <LoadingScreen />;
-  if (!currentUser)          return <Navigate to="/admin-login" replace />;
+  if (!currentUser)          return <Navigate to="/login" replace />;
   if (userRole !== "admin")  return <Navigate to="/dashboard"   replace />;
   return element;
 }
