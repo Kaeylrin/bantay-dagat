@@ -45,7 +45,6 @@ function PublicRoute({ element }) {
   // Don't redirect if a login is currently in progress
   const loginBusy = sessionStorage.getItem(LOGIN_FLAG_KEY);
   if (loginBusy) return element;
-  if (currentUser && userRole === "admin") return <Navigate to="/admin" replace />;
   if (currentUser) return <Navigate to="/dashboard" replace />;
   return element;
 }
@@ -56,7 +55,6 @@ function AdminPublicRoute({ element }) {
   // Don't redirect if a login is currently in progress
   const loginBusy = sessionStorage.getItem(LOGIN_FLAG_KEY);
   if (loginBusy) return element;
-  if (currentUser && userRole === "admin") return <Navigate to="/admin" replace />;
   if (currentUser) return <Navigate to="/dashboard" replace />;
   return element;
 }

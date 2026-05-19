@@ -170,7 +170,7 @@ export default function AdminLogin() {
       try { localStorage.removeItem(LS_KEY_ADMIN); } catch {}
 
       sessionStorage.removeItem(LOGIN_FLAG_KEY);
-      navigate("/admin", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setHasAttempted(true);
       const newFail = actualFailCount + 1;
