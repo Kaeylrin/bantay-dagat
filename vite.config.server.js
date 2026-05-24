@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Server build configuration
 export default defineConfig({
   build: {
     lib: {
@@ -18,9 +17,21 @@ export default defineConfig({
     ssr: true,
     rollupOptions: {
       external: [
-        "fs", "path", "url", "http", "https", "os", "crypto",
-        "stream", "util", "events", "buffer", "querystring", "child_process",
-        "express", "cors",
+        "fs",
+        "path",
+        "url",
+        "http",
+        "https",
+        "os",
+        "crypto",
+        "stream",
+        "util",
+        "events",
+        "buffer",
+        "querystring",
+        "child_process",
+        "express",
+        "cors",
       ],
       output: {
         format: "es",

@@ -1,48 +1,38 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/authContext";
-import Login         from "./pages/Login";
-import AdminLogin    from "./pages/AdminLogin";
-import Dashboard     from "./pages/Dashboard";
+import Login from "./pages/Login";
+import AdminLogin from "./pages/AdminLogin";
+import Dashboard from "./pages/Dashboard";
 import HistoricalTrends from "./pages/HistoricalTrends";
-import AlertLogs     from "./pages/AlertLogs";
+import AlertLogs from "./pages/AlertLogs";
 import EnvironmentData from "./pages/EnvironmentData";
-import AdminPanel    from "./pages/AdminPanel";
+import AdminPanel from "./pages/AdminPanel";
 import ResetPassword from "./pages/ResetPassword";
-import NotFound      from "./pages/NotFound";
+import NotFound from "./pages/NotFound";
 import { RefreshCw } from "lucide-react";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Login-in-progress flag
-// The login pages set this flag while they are processing a login so that
-// the route guards don't redirect the user away mid-login (which would
-// unmount the login component and abort profile bootstrap / role checks).
-// ─────────────────────────────────────────────────────────────────────────────
 export const LOGIN_FLAG_KEY = "bd_login_in_progress";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Route guards
-// ─────────────────────────────────────────────────────────────────────────────
 
 function ProtectedRoute({ element }) {
   const { currentUser, userRole, loading } = useAuth();
   if (loading) return <LoadingScreen />;
   if (!currentUser) return <Navigate to="/login" replace />;
-  // Both admins and rangers can access dashboard pages
+
   return element;
 }
 
 function AdminRoute({ element }) {
   const { currentUser, userRole, loading } = useAuth();
   if (loading) return <LoadingScreen />;
-  if (!currentUser)          return <Navigate to="/login" replace />;
-  if (userRole !== "admin")  return <Navigate to="/dashboard"   replace />;
+  if (!currentUser) return <Navigate to="/login" replace />;
+  if (userRole !== "admin") return <Navigate to="/dashboard" replace />;
   return element;
 }
 
 function PublicRoute({ element }) {
   const { currentUser, userRole, loading } = useAuth();
   if (loading) return <LoadingScreen />;
-  // Don't redirect if a login is currently in progress
+
   const loginBusy = sessionStorage.getItem(LOGIN_FLAG_KEY);
   if (loginBusy) return element;
   if (currentUser) return <Navigate to="/dashboard" replace />;
@@ -52,7 +42,7 @@ function PublicRoute({ element }) {
 function AdminPublicRoute({ element }) {
   const { currentUser, userRole, loading } = useAuth();
   if (loading) return <LoadingScreen />;
-  // Don't redirect if a login is currently in progress
+
   const loginBusy = sessionStorage.getItem(LOGIN_FLAG_KEY);
   if (loginBusy) return element;
   if (currentUser) return <Navigate to="/dashboard" replace />;
@@ -71,27 +61,43 @@ function LoadingScreen() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// App
-// ─────────────────────────────────────────────────────────────────────────────
+
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login"       element={<PublicRoute      element={<Login />}           />} />
-          <Route path="/admin-login" element={<AdminPublicRoute element={<AdminLogin />}      />} />
-          <Route path="/"            element={<Navigate to="/dashboard" replace />}               />
-          <Route path="/dashboard"   element={<ProtectedRoute element={<Dashboard />}       />} />
-          <Route path="/trends"      element={<ProtectedRoute element={<HistoricalTrends />}/>} />
-          <Route path="/alerts"      element={<ProtectedRoute element={<AlertLogs />}       />} />
-          <Route path="/environment" element={<ProtectedRoute element={<EnvironmentData />} />} />
-          <Route path="/admin"       element={<AdminRoute     element={<AdminPanel />}      />} />
+          <Route path="/login" element={<PublicRoute element={<Login />} />} />
+          <Route
+            path="/admin-login"
+            element={<AdminPublicRoute element={<AdminLogin />} />}
+          />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/dashboard"
+            element={<ProtectedRoute element={<Dashboard />} />}
+          />
+          <Route
+            path="/trends"
+            element={<ProtectedRoute element={<HistoricalTrends />} />}
+          />
+          <Route
+            path="/alerts"
+            element={<ProtectedRoute element={<AlertLogs />} />}
+          />
+          <Route
+            path="/environment"
+            element={<ProtectedRoute element={<EnvironmentData />} />}
+          />
+          <Route
+            path="/admin"
+            element={<AdminRoute element={<AdminPanel />} />}
+          />
           <Route path="/reset-password" element={<ResetPassword />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*"            element={<NotFound />}                                      />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
   );
 }
-

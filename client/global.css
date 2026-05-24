@@ -1,4 +1,3 @@
-/** @import must precede all other statements */
 @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap");
 
 @tailwind base;
@@ -6,55 +5,46 @@
 @tailwind utilities;
 
 @layer base {
-  /**
-   * Tailwind CSS theme
-   * tailwind.config.ts expects the following color variables to be expressed as HSL values.
-   * A different format will require also updating the theme in tailwind.config.ts.
-  */
   :root {
-    /* BantayDagat Design System */
-    /* Background and surfaces */
-    --background: 206 93% 97%; /* #F0F9FF Sky White */
-    --foreground: 210 60% 16%; /* #164E63 Deep Teal */
+    --background: 206 93% 97%;
+    --foreground: 210 60% 16%;
 
-    --card: 0 0% 100%; /* White */
-    --card-foreground: 210 60% 16%; /* Deep Teal */
+    --card: 0 0% 100%;
+    --card-foreground: 210 60% 16%;
 
-    --popover: 0 0% 100%; /* White */
-    --popover-foreground: 210 60% 16%; /* Deep Teal */
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 60% 16%;
 
-    /* Primary and secondary */
-    --primary: 198 82% 39%; /* #0284C7 Reef Blue */
+    --primary: 198 82% 39%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 206 100% 94%; /* #E0F2FE Lagoon */
-    --secondary-foreground: 210 60% 16%; /* Deep Teal */
+    --secondary: 206 100% 94%;
+    --secondary-foreground: 210 60% 16%;
 
-    --muted: 206 100% 94%; /* Lagoon */
+    --muted: 206 100% 94%;
     --muted-foreground: 210 40% 50%;
 
-    --accent: 198 91% 48%; /* #0EA5E9 Wave */
+    --accent: 198 91% 48%;
     --accent-foreground: 0 0% 100%;
 
-    /* Status colors */
-    --safe: 136 67% 45%; /* #16A34A Green */
-    --caution: 38 92% 50%; /* #D97706 Amber */
-    --danger: 0 86% 50%; /* #DC2626 Red */
+    --safe: 136 67% 45%;
+    --caution: 38 92% 50%;
+    --danger: 0 86% 50%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 206 100% 94%; /* Lagoon */
+    --border: 206 100% 94%;
     --input: 206 100% 94%;
-    --ring: 198 82% 39%; /* Reef Blue */
+    --ring: 198 82% 39%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 206 93% 97%; /* Sky White */
-    --sidebar-foreground: 210 60% 16%; /* Deep Teal */
-    --sidebar-primary: 198 82% 39%; /* Reef Blue */
+    --sidebar-background: 206 93% 97%;
+    --sidebar-foreground: 210 60% 16%;
+    --sidebar-primary: 198 82% 39%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 206 100% 94%; /* Lagoon */
+    --sidebar-accent: 206 100% 94%;
     --sidebar-accent-foreground: 210 60% 16%;
     --sidebar-border: 206 100% 94%;
     --sidebar-ring: 198 82% 39%;
@@ -112,7 +102,12 @@
     @apply bg-background text-foreground font-body;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-header;
   }
 
@@ -125,5 +120,16 @@
   code {
     overflow-x: auto;
     white-space: pre;
+  }
+}
+
+@layer utilities {
+  .bottom-blend-mask {
+    -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.5) 30%, rgba(0, 0, 0, 0.15) 60%, rgba(0, 0, 0, 0) 80%, rgba(0, 0, 0, 0) 100%);
+    mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.5) 30%, rgba(0, 0, 0, 0.15) 60%, rgba(0, 0, 0, 0) 80%, rgba(0, 0, 0, 0) 100%);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
   }
 }

@@ -1,23 +1,36 @@
 import { useState, useEffect, useMemo } from "react";
 import Layout from "@/components/Layout";
-import { ChevronUp, ChevronDown, WifiOff, RefreshCw, Database, AlertTriangle } from "lucide-react";
-import { db, ref, onValue, off, mapArduinoReading, DB_PATHS } from "@/lib/firebase";
+import {
+  ChevronUp,
+  ChevronDown,
+  WifiOff,
+  RefreshCw,
+  Database,
+  AlertTriangle,
+} from "lucide-react";
+import {
+  db,
+  ref,
+  onValue,
+  off,
+  mapArduinoReading,
+  DB_PATHS,
+} from "@/lib/firebase";
 
-// Thresholds — mirror Dashboard SENSOR_CONFIG
 const THRESHOLDS = {
   air_temperature: { safe: [20, 35], caution: [15, 38] },
-  temperature:     { safe: [25, 32], caution: [20, 35] },
-  humidity:        { safe: [50, 80], caution: [40, 90] },
-  ph:              { safe: [6.8, 7.4], caution: [6.5, 7.8] },
-  turbidity:       { safe: [0, 5],    caution: [0, 10]  },
+  temperature: { safe: [25, 32], caution: [20, 35] },
+  humidity: { safe: [50, 80], caution: [40, 90] },
+  ph: { safe: [6.8, 7.4], caution: [6.5, 7.8] },
+  turbidity: { safe: [0, 5], caution: [0, 10] },
 };
 
 const SENSOR_META = {
-  air_temperature: { label: "Air Temp",    unit: "°C"  },
-  temperature:     { label: "Water Temp",  unit: "°C"  },
-  humidity:        { label: "Humidity",    unit: "%"   },
-  ph:              { label: "pH Level",    unit: "pH"  },
-  turbidity:       { label: "Turbidity",   unit: "NTU" },
+  air_temperature: { label: "Air Temp", unit: "°C" },
+  temperature: { label: "Water Temp", unit: "°C" },
+  humidity: { label: "Humidity", unit: "%" },
+  ph: { label: "pH Level", unit: "pH" },
+  turbidity: { label: "Turbidity", unit: "NTU" },
 };
 
 function deriveStatus(key, value) {
@@ -25,26 +38,32 @@ function deriveStatus(key, value) {
   const t = THRESHOLDS[key];
   if (!t) return "unknown";
   if (value < t.caution[0] || value > t.caution[1]) return "danger";
-  if (value < t.safe[0]    || value > t.safe[1])    return "caution";
+  if (value < t.safe[0] || value > t.safe[1]) return "caution";
   return "safe";
 }
 
 function overallStatus(reading) {
   const keys = Object.keys(SENSOR_META);
   const statuses = keys.map((k) => deriveStatus(k, reading[k]));
-  if (statuses.includes("danger"))  return "danger";
+  if (statuses.includes("danger")) return "danger";
   if (statuses.includes("caution")) return "caution";
   if (statuses.every((s) => s === "unknown")) return "unknown";
   return "safe";
 }
 
 const statusBadge = (s) =>
-  ({ safe: "bg-safe/20 text-safe", caution: "bg-caution/20 text-caution", danger: "bg-danger/20 text-danger" }[s]
-    ?? "bg-secondary text-muted-foreground");
+  ({
+    safe: "bg-safe/20 text-safe",
+    caution: "bg-caution/20 text-caution",
+    danger: "bg-danger/20 text-danger",
+  })[s] ?? "bg-secondary text-muted-foreground";
 
 const cellColor = (s) =>
-  ({ safe: "text-safe", caution: "text-caution font-semibold", danger: "text-danger font-bold" }[s]
-    ?? "text-muted-foreground");
+  ({
+    safe: "text-safe",
+    caution: "text-caution font-semibold",
+    danger: "text-danger font-bold",
+  })[s] ?? "text-muted-foreground";
 
 const fmt = (v, unit) =>
   v !== null && v !== undefined ? `${Number(v).toFixed(2)} ${unit}` : "—";
@@ -52,87 +71,98 @@ const fmt = (v, unit) =>
 const fmtTs = (ts) =>
   ts
     ? new Date(ts).toLocaleString("en-PH", {
-        year: "numeric", month: "short", day: "numeric",
-        hour: "2-digit", minute: "2-digit", second: "2-digit",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
       })
     : "—";
 
-// Tab definitions
 const TABS = [
-  { id: "all",    label: "All Readings" },
+  { id: "all", label: "All Readings" },
   { id: "alerts", label: "NO-GO Alerts" },
 ];
 
 export default function AlertLogs() {
-  const [readings,        setReadings]        = useState([]);
-  const [alerts,          setAlerts]          = useState([]);
+  const [readings, setReadings] = useState([]);
+  const [alerts, setAlerts] = useState([]);
   const [connectionState, setConnectionState] = useState("connecting");
-  const [errorMessage,    setErrorMessage]    = useState(null);
-  const [sortDir,         setSortDir]         = useState("desc");
-  const [filterStatus,    setFilterStatus]    = useState("all");
-  const [searchQuery,     setSearchQuery]     = useState("");
-  const [activeTab,       setActiveTab]       = useState("all");
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [sortDir, setSortDir] = useState("desc");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
-    // Listen to /bantaydagat/readings (all sensor history)
     const histRef = ref(db, DB_PATHS.READINGS);
 
-    onValue(histRef, (snap) => {
-      const data = snap.val();
-      if (data) {
-        const parsed = Object.entries(data).map(([key, raw]) => ({
-          id: key,
-          ...mapArduinoReading(raw),
-        }));
-        setReadings(parsed);
-        setConnectionState("live");
-        setErrorMessage(null);
-      } else {
-        setReadings([]);
-        setConnectionState("live");
-      }
-    }, (err) => {
-      setConnectionState("error");
-      setErrorMessage(err.message);
-    });
+    onValue(
+      histRef,
+      (snap) => {
+        const data = snap.val();
+        if (data) {
+          const parsed = Object.entries(data).map(([key, raw]) => ({
+            id: key,
+            ...mapArduinoReading(raw),
+          }));
+          setReadings(parsed);
+          setConnectionState("live");
+          setErrorMessage(null);
+        } else {
+          setReadings([]);
+          setConnectionState("live");
+        }
+      },
+      (err) => {
+        setConnectionState("error");
+        setErrorMessage(err.message);
+      },
+    );
 
-    // Listen to /bantaydagat/alerts (NO-GO events pushed by Arduino)
     const alertRef = ref(db, DB_PATHS.ALERTS);
 
-    onValue(alertRef, (snap) => {
-      const data = snap.val();
-      if (data) {
-        const parsed = Object.entries(data).map(([key, raw]) => ({
-          id: key,
-          ...mapArduinoReading(raw),
-        }));
-        setAlerts(parsed);
-      } else {
-        setAlerts([]);
-      }
-    }, () => {});
+    onValue(
+      alertRef,
+      (snap) => {
+        const data = snap.val();
+        if (data) {
+          const parsed = Object.entries(data).map(([key, raw]) => ({
+            id: key,
+            ...mapArduinoReading(raw),
+          }));
+          setAlerts(parsed);
+        } else {
+          setAlerts([]);
+        }
+      },
+      () => {},
+    );
 
-    return () => { off(histRef); off(alertRef); };
+    return () => {
+      off(histRef);
+      off(alertRef);
+    };
   }, []);
 
-  // Choose dataset based on active tab
   const dataset = activeTab === "alerts" ? alerts : readings;
 
   const sorted = useMemo(() => {
     let list = [...dataset];
 
-    // Status filter
     if (filterStatus !== "all") {
       list = list.filter((r) => overallStatus(r) === filterStatus);
     }
 
-    // Search filter — search across timestamp, status, and sensor values
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((r) => {
         const tsStr = r.timestamp ? fmtTs(r.timestamp).toLowerCase() : "";
         const statusStr = (r.status || overallStatus(r)).toLowerCase();
-        const valStr = Object.keys(SENSOR_META).map((k) => String(r[k] ?? "")).join(" ");
+        const valStr = Object.keys(SENSOR_META)
+          .map((k) => String(r[k] ?? ""))
+          .join(" ");
         return tsStr.includes(q) || statusStr.includes(q) || valStr.includes(q);
       });
     }
@@ -150,7 +180,9 @@ export default function AlertLogs() {
     <Layout>
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-          <h2 className="text-2xl font-header font-bold text-foreground">Alert Logs</h2>
+          <h2 className="text-2xl font-header font-bold text-foreground">
+            Alert Logs
+          </h2>
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/40 px-3 py-1.5 rounded-full">
             <Database className="w-3 h-3" />
             {readings.length} readings · {alerts.length} alerts
@@ -192,7 +224,9 @@ export default function AlertLogs() {
         {/* Filters */}
         <div className="mb-5 flex flex-wrap gap-4 items-center">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-foreground">Status:</label>
+            <label className="text-sm font-medium text-foreground">
+              Status:
+            </label>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -211,13 +245,17 @@ export default function AlertLogs() {
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-secondary bg-background text-sm hover:bg-secondary/40 transition-colors"
             >
               Timestamp
-              {sortDir === "desc"
-                ? <ChevronDown className="w-4 h-4" />
-                : <ChevronUp   className="w-4 h-4" />}
+              {sortDir === "desc" ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronUp className="w-4 h-4" />
+              )}
             </button>
           </div>
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <label className="text-sm font-medium text-foreground shrink-0">Search:</label>
+            <label className="text-sm font-medium text-foreground shrink-0">
+              Search:
+            </label>
             <input
               type="text"
               value={searchQuery}
@@ -238,12 +276,17 @@ export default function AlertLogs() {
             sorted.map((row) => {
               const overall = overallStatus(row);
               return (
-                <div key={row.id} className="bg-white rounded-xl border border-secondary shadow-sm p-4">
+                <div
+                  key={row.id}
+                  className="bg-white rounded-xl border border-secondary shadow-sm p-4"
+                >
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs text-muted-foreground font-mono">
                       {fmtTs(row.timestamp)}
                     </span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusBadge(overall)}`}>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusBadge(overall)}`}
+                    >
                       {overall.toUpperCase()}
                     </span>
                   </div>
@@ -251,9 +294,16 @@ export default function AlertLogs() {
                     {sensorKeys.map(([k, m]) => {
                       const s = deriveStatus(k, row[k]);
                       return (
-                        <div key={k} className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">{m.label}</span>
-                          <span className={`text-sm font-medium ${cellColor(s)}`}>
+                        <div
+                          key={k}
+                          className="flex items-center justify-between"
+                        >
+                          <span className="text-xs text-muted-foreground">
+                            {m.label}
+                          </span>
+                          <span
+                            className={`text-sm font-medium ${cellColor(s)}`}
+                          >
                             {fmt(row[k], m.unit)}
                           </span>
                         </div>
@@ -280,10 +330,17 @@ export default function AlertLogs() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-secondary bg-secondary/30">
-                  <th className="px-5 py-3 text-left font-header font-bold text-foreground whitespace-nowrap">Timestamp</th>
-                  <th className="px-5 py-3 text-left font-header font-bold text-foreground whitespace-nowrap">Overall</th>
+                  <th className="px-5 py-3 text-left font-header font-bold text-foreground whitespace-nowrap">
+                    Timestamp
+                  </th>
+                  <th className="px-5 py-3 text-left font-header font-bold text-foreground whitespace-nowrap">
+                    Overall
+                  </th>
                   {sensorKeys.map(([k, m]) => (
-                    <th key={k} className="px-5 py-3 text-left font-header font-bold text-foreground whitespace-nowrap">
+                    <th
+                      key={k}
+                      className="px-5 py-3 text-left font-header font-bold text-foreground whitespace-nowrap"
+                    >
                       {m.label}
                     </th>
                   ))}
@@ -292,7 +349,10 @@ export default function AlertLogs() {
               <tbody>
                 {connectionState === "connecting" ? (
                   <tr>
-                    <td colSpan={2 + sensorKeys.length} className="px-6 py-8 text-center text-muted-foreground">
+                    <td
+                      colSpan={2 + sensorKeys.length}
+                      className="px-6 py-8 text-center text-muted-foreground"
+                    >
                       <div className="flex items-center justify-center gap-2">
                         <RefreshCw className="w-4 h-4 animate-spin" /> Loading…
                       </div>
@@ -302,19 +362,27 @@ export default function AlertLogs() {
                   sorted.map((row) => {
                     const overall = overallStatus(row);
                     return (
-                      <tr key={row.id} className="border-b border-secondary hover:bg-secondary/20 transition-colors">
+                      <tr
+                        key={row.id}
+                        className="border-b border-secondary hover:bg-secondary/20 transition-colors"
+                      >
                         <td className="px-5 py-3 text-foreground whitespace-nowrap font-mono text-xs">
                           {fmtTs(row.timestamp)}
                         </td>
                         <td className="px-5 py-3">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusBadge(overall)}`}>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusBadge(overall)}`}
+                          >
                             {overall.toUpperCase()}
                           </span>
                         </td>
                         {sensorKeys.map(([k, m]) => {
                           const s = deriveStatus(k, row[k]);
                           return (
-                            <td key={k} className={`px-5 py-3 whitespace-nowrap ${cellColor(s)}`}>
+                            <td
+                              key={k}
+                              className={`px-5 py-3 whitespace-nowrap ${cellColor(s)}`}
+                            >
                               {fmt(row[k], m.unit)}
                             </td>
                           );
@@ -324,7 +392,10 @@ export default function AlertLogs() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={2 + sensorKeys.length} className="px-6 py-8 text-center text-muted-foreground">
+                    <td
+                      colSpan={2 + sensorKeys.length}
+                      className="px-6 py-8 text-center text-muted-foreground"
+                    >
                       {dataset.length === 0
                         ? activeTab === "alerts"
                           ? "No NO-GO alerts found in the database."
@@ -343,8 +414,8 @@ export default function AlertLogs() {
             {connectionState === "live"
               ? `Showing ${sorted.length} of ${dataset.length} ${activeTab === "alerts" ? "alerts" : "readings"} — live from ${activeTab === "alerts" ? DB_PATHS.ALERTS : DB_PATHS.READINGS}`
               : connectionState === "connecting"
-              ? "Loading from Firebase Realtime Database…"
-              : "Firebase connection unavailable."}
+                ? "Loading from Firebase Realtime Database…"
+                : "Firebase connection unavailable."}
           </p>
         </div>
       </div>
