@@ -1,8 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  LayoutGrid, TrendingUp, AlertCircle, Globe, LogOut, ChevronDown, ShieldCheck,
-  Menu, X,
+  LayoutGrid,
+  TrendingUp,
+  AlertCircle,
+  Globe,
+  LogOut,
+  ChevronDown,
+  ShieldCheck,
+  Menu,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 
@@ -11,15 +18,19 @@ export default function Layout({ children }) {
   const { currentUser, userRole, userProfile, logout } = useAuth();
 
   const baseNav = [
-    { path: "/dashboard",   label: "Dashboard",         icon: LayoutGrid  },
-    { path: "/trends",      label: "Historical Trends",  icon: TrendingUp  },
-    { path: "/alerts",      label: "Alert Logs",         icon: AlertCircle },
-    { path: "/environment", label: "Environmental Data", icon: Globe        },
+    { path: "/dashboard", label: "Dashboard", icon: LayoutGrid },
+    { path: "/trends", label: "Historical Trends", icon: TrendingUp },
+    { path: "/alerts", label: "Alert Logs", icon: AlertCircle },
+    { path: "/environment", label: "Environmental Data", icon: Globe },
   ];
 
-  const navItems = userRole === "admin"
-    ? [...baseNav, { path: "/admin", label: "Admin Panel", icon: ShieldCheck }]
-    : baseNav;
+  const navItems =
+    userRole === "admin"
+      ? [
+          ...baseNav,
+          { path: "/admin", label: "Admin Panel", icon: ShieldCheck },
+        ]
+      : baseNav;
 
   const isActive = (path) => location.pathname === path;
 
@@ -27,17 +38,13 @@ export default function Layout({ children }) {
   const displayEmail = currentUser?.email || "";
   const initial = displayName.charAt(0).toUpperCase();
 
-  // User dropdown state
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
-  // Logout modal state
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -48,25 +55,31 @@ export default function Layout({ children }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
 
-  // Close sidebar on route change
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  // Sidebar content (shared between desktop and mobile)
   const sidebarContent = (
     <>
       <div className="p-6 border-b border-secondary flex items-center gap-3">
-        <img src="/bantay-dagat.png" alt="BantayDagat Logo" className="w-10 h-10 object-contain shrink-0" />
+        <img
+          src="/bantay-dagat.png"
+          alt="BantayDagat Logo"
+          className="w-10 h-10 object-contain shrink-0"
+        />
         <div>
-          <h1 className="text-lg font-header font-bold text-foreground leading-none">BantayDagat</h1>
-          <p className="text-xs text-muted-foreground mt-1">Water Quality Monitor</p>
+          <h1 className="text-lg font-header font-bold text-foreground leading-none">
+            BantayDagat
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            Water Quality Monitor
+          </p>
         </div>
       </div>
 
       <nav className="flex-1 p-4 space-y-2">
         {navItems.map((item) => {
-          const Icon   = item.icon;
+          const Icon = item.icon;
           const active = isActive(item.path);
           const isAdmin = item.path === "/admin";
           return (
@@ -75,8 +88,12 @@ export default function Layout({ children }) {
               to={item.path}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 active
-                  ? isAdmin ? "bg-safe text-white" : "bg-primary text-white"
-                  : isAdmin ? "text-safe hover:bg-safe/10" : "text-foreground hover:bg-secondary"
+                  ? isAdmin
+                    ? "bg-safe text-white"
+                    : "bg-primary text-white"
+                  : isAdmin
+                    ? "text-safe hover:bg-safe/10"
+                    : "text-foreground hover:bg-secondary"
               }`}
             >
               <Icon className="w-5 h-5" />
@@ -88,9 +105,13 @@ export default function Layout({ children }) {
 
       {/* Role badge */}
       <div className="px-5 pb-3">
-        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold ${
-          userRole === "admin" ? "bg-safe/10 text-safe" : "bg-primary/10 text-primary"
-        }`}>
+        <div
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold ${
+            userRole === "admin"
+              ? "bg-safe/10 text-safe"
+              : "bg-primary/10 text-primary"
+          }`}
+        >
           <ShieldCheck className="w-3.5 h-3.5" />
           {userRole === "admin" ? "Administrator" : "Ranger"}
         </div>
@@ -151,7 +172,9 @@ export default function Layout({ children }) {
               <Menu className="w-5 h-5 text-foreground" />
             </button>
             <h1 className="text-sm sm:text-xl font-header font-bold text-foreground truncate">
-              <span className="hidden sm:inline">BantayDagat: IoT-Based Water Quality Monitoring System</span>
+              <span className="hidden sm:inline">
+                BantayDagat: IoT-Based Water Quality Monitoring System
+              </span>
               <span className="sm:hidden">BantayDagat</span>
             </h1>
           </div>
@@ -166,19 +189,29 @@ export default function Layout({ children }) {
                 {initial}
               </div>
               <div className="text-left hidden sm:block">
-                <p className="text-sm font-medium text-foreground leading-none">{displayName}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{displayEmail}</p>
+                <p className="text-sm font-medium text-foreground leading-none">
+                  {displayName}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {displayEmail}
+                </p>
               </div>
-              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform hidden sm:block ${menuOpen ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`w-4 h-4 text-muted-foreground transition-transform hidden sm:block ${menuOpen ? "rotate-180" : ""}`}
+              />
             </button>
 
             {menuOpen && (
               <div className="absolute right-0 mt-1 w-52 rounded-lg border border-secondary bg-white shadow-lg py-1 z-50">
                 <div className="px-3 py-2 text-xs text-muted-foreground border-b border-secondary">
-                  Role: <span className="font-bold ml-1 capitalize">{userRole}</span>
+                  Role:{" "}
+                  <span className="font-bold ml-1 capitalize">{userRole}</span>
                 </div>
                 <button
-                  onClick={() => { setMenuOpen(false); setShowLogoutModal(true); }}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowLogoutModal(true);
+                  }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
                 >
                   <LogOut className="w-4 h-4" /> Logout
@@ -194,16 +227,22 @@ export default function Layout({ children }) {
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowLogoutModal(false)} />
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowLogoutModal(false)}
+          />
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6 relative z-10 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center shrink-0">
                 <LogOut className="w-5 h-5 text-danger" />
               </div>
-              <h3 className="text-lg font-bold text-foreground">Confirm Logout</h3>
+              <h3 className="text-lg font-bold text-foreground">
+                Confirm Logout
+              </h3>
             </div>
             <p className="text-sm text-muted-foreground mb-6">
-              Are you sure you want to log out of your account? You will need to sign in again to access the dashboard.
+              Are you sure you want to log out of your account? You will need to
+              sign in again to access the dashboard.
             </p>
             <div className="flex justify-end gap-3">
               <button

@@ -1,5 +1,21 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { auth, db, ref, get, onValue, off, onAuthStateChanged, signOut, DB_PATHS } from "@/lib/firebase";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import {
+  auth,
+  db,
+  ref,
+  get,
+  onValue,
+  off,
+  onAuthStateChanged,
+  signOut,
+  DB_PATHS,
+} from "@/lib/firebase";
 
 const AuthContext = createContext(null);
 
@@ -9,13 +25,14 @@ export function sanitiseEmailKey(email) {
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
-  const [userRole,    setUserRole]    = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
-  const [loading,     setLoading]     = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  // Force-logout helper that clears all state
   const forceLogout = useCallback(async () => {
-    try { await signOut(auth); } catch {}
+    try {
+      await signOut(auth);
+    } catch {}
     setCurrentUser(null);
     setUserRole(null);
     setUserProfile(null);
@@ -25,8 +42,10 @@ export function AuthProvider({ children }) {
     let profileUnsub = null;
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // Clean up any previous profile listener
-      if (profileUnsub) { profileUnsub(); profileUnsub = null; }
+      if (profileUnsub) {
+        profileUnsub();
+        profileUnsub = null;
+      }
 
       if (user) {
         try {
@@ -34,9 +53,6 @@ export function AuthProvider({ children }) {
           const profile = snap.val();
 
           if (!profile) {
-            // No profile yet — keep user logged in with no role.
-            // The admin login page will auto-create the profile.
-            // Rangers should always have profiles created by admin.
             setUserRole(null);
             setUserProfile(null);
             setCurrentUser(user);
@@ -54,22 +70,22 @@ export function AuthProvider({ children }) {
           setUserProfile(profile);
           setCurrentUser(user);
 
-          // Real-time listener on own profile — if admin disables this
-          // account or deletes it, sign out immediately
           const profileRef = ref(db, `${DB_PATHS.USERS}/${user.uid}`);
-          profileUnsub = onValue(profileRef, (liveSnap) => {
-            const live = liveSnap.val();
-            if (!live || live.isActive === false) {
-              forceLogout();
-              return;
-            }
-            // Update role/profile if admin changed something
-            setUserRole(live.role);
-            setUserProfile(live);
-          }, () => {});
+          profileUnsub = onValue(
+            profileRef,
+            (liveSnap) => {
+              const live = liveSnap.val();
+              if (!live || live.isActive === false) {
+                forceLogout();
+                return;
+              }
+
+              setUserRole(live.role);
+              setUserProfile(live);
+            },
+            () => {},
+          );
         } catch {
-          // Profile fetch failed (network/rules) — keep user logged in
-          // but with no role. Route guards will handle access.
           setUserRole(null);
           setUserProfile(null);
           setCurrentUser(user);
@@ -93,7 +109,9 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, userProfile, loading, logout }}>
+    <AuthContext.Provider
+      value={{ currentUser, userRole, userProfile, loading, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

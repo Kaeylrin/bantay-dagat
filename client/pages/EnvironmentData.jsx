@@ -18,10 +18,10 @@ const SANCTUARY_LAT = 14.3025;
 const SANCTUARY_LNG = 120.7617;
 
 const WMO_CODES = {
-  0:  "Clear Sky",
-  1:  "Mainly Clear",
-  2:  "Partly Cloudy",
-  3:  "Overcast",
+  0: "Clear Sky",
+  1: "Mainly Clear",
+  2: "Partly Cloudy",
+  3: "Overcast",
   45: "Foggy",
   48: "Icy Fog",
   51: "Light Drizzle",
@@ -46,11 +46,10 @@ function degToCardinal(deg) {
   return dirs[Math.round(deg / 45) % 8];
 }
 
-// Open-Meteo Weather API
 function WeatherPanel() {
-  const [data, setData]               = useState(null);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState(null);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [lastFetched, setLastFetched] = useState(null);
 
   const fetchWeather = async () => {
@@ -79,7 +78,9 @@ function WeatherPanel() {
     }
   };
 
-  useEffect(() => { fetchWeather(); }, []);
+  useEffect(() => {
+    fetchWeather();
+  }, []);
 
   const isReleaseWeatherSafe =
     data &&
@@ -136,23 +137,27 @@ function WeatherPanel() {
                 : "bg-caution/10 border-caution/40"
             }`}
           >
-            {isReleaseWeatherSafe
-              ? <CheckCircle2 className="w-8 h-8 text-safe shrink-0" />
-              : <AlertTriangle className="w-8 h-8 text-caution shrink-0" />
-            }
+            {isReleaseWeatherSafe ? (
+              <CheckCircle2 className="w-8 h-8 text-safe shrink-0" />
+            ) : (
+              <AlertTriangle className="w-8 h-8 text-caution shrink-0" />
+            )}
             <div>
-              <p className={`font-header font-bold text-lg ${
-                isReleaseWeatherSafe ? "text-safe" : "text-caution"
-              }`}>
-                Weather: {isReleaseWeatherSafe
+              <p
+                className={`font-header font-bold text-lg ${
+                  isReleaseWeatherSafe ? "text-safe" : "text-caution"
+                }`}
+              >
+                Weather:{" "}
+                {isReleaseWeatherSafe
                   ? "Favorable for Turtle Release"
                   : "Adverse Weather — Hold Release"}
               </p>
               <p className="text-sm text-muted-foreground">
-                {WMO_CODES[data.current.weather_code] || "Unknown"} ·{" "}
-                Wind {data.current.wind_speed_10m} km/h{" "}
-                {degToCardinal(data.current.wind_direction_10m)} ·{" "}
-                Rain: {data.current.rain} mm
+                {WMO_CODES[data.current.weather_code] || "Unknown"} · Wind{" "}
+                {data.current.wind_speed_10m} km/h{" "}
+                {degToCardinal(data.current.wind_direction_10m)} · Rain:{" "}
+                {data.current.rain} mm
               </p>
             </div>
           </div>
@@ -194,14 +199,18 @@ function WeatherPanel() {
                     {stat.label}
                   </span>
                 </div>
-                <p className="text-xl font-header font-bold text-foreground">{stat.value}</p>
+                <p className="text-xl font-header font-bold text-foreground">
+                  {stat.value}
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">{stat.sub}</p>
               </div>
             ))}
           </div>
 
           <div>
-            <h4 className="text-sm font-header font-bold text-foreground mb-3">5-Day Forecast</h4>
+            <h4 className="text-sm font-header font-bold text-foreground mb-3">
+              5-Day Forecast
+            </h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
               {data.daily.time.map((date, i) => (
                 <div
@@ -218,8 +227,12 @@ function WeatherPanel() {
                   <p className="text-xs font-medium text-foreground mb-1">
                     {WMO_CODES[data.daily.weather_code[i]] || "—"}
                   </p>
-                  <p className="text-sm font-bold text-danger">{data.daily.temperature_2m_max[i]}°</p>
-                  <p className="text-xs text-primary">{data.daily.temperature_2m_min[i]}°</p>
+                  <p className="text-sm font-bold text-danger">
+                    {data.daily.temperature_2m_max[i]}°
+                  </p>
+                  <p className="text-xs text-primary">
+                    {data.daily.temperature_2m_min[i]}°
+                  </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     🌧 {data.daily.precipitation_sum[i]} mm
                   </p>
@@ -237,11 +250,7 @@ function WeatherPanel() {
   );
 }
 
-
-
-const TABS = [
-  { id: "weather", label: "Weather",          icon: Cloud   },
-];
+const TABS = [{ id: "weather", label: "Weather", icon: Cloud }];
 
 export default function EnvironmentData() {
   const [activeTab, setActiveTab] = useState("weather");
@@ -254,13 +263,14 @@ export default function EnvironmentData() {
             Environmental Monitoring
           </h2>
           <p className="text-sm text-muted-foreground">
-            Real-time environmental data for sea turtle pre-release safety assessment.
+            Real-time environmental data for sea turtle pre-release safety
+            assessment.
           </p>
         </div>
 
         <div className="flex gap-2 mb-8 bg-secondary/30 rounded-xl p-2 border border-secondary">
           {TABS.map((tab) => {
-            const Icon   = tab.icon;
+            const Icon = tab.icon;
             const active = activeTab === tab.id;
             return (
               <button

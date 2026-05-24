@@ -2,16 +2,21 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, ShieldCheck, Lock, Clock } from "lucide-react";
 import {
-  db, auth, ref, get, set,
-  signInWithEmailAndPassword, signOut,
+  db,
+  auth,
+  ref,
+  get,
+  set,
+  signInWithEmailAndPassword,
+  signOut,
   DB_PATHS,
 } from "@/lib/firebase";
 import { sanitiseEmailKey } from "@/lib/authContext";
 import { LOGIN_FLAG_KEY } from "@/App";
 
-const MAX_ATTEMPTS   = 5;
-const LOCKOUT_MS     = 30 * 60 * 1000; // 30 minutes
-const LS_KEY_ADMIN   = "bd_admin_lockout_email";
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 30 * 60 * 1000;
+const LS_KEY_ADMIN = "bd_admin_lockout_email";
 
 function getAttemptKey(email) {
   return `${DB_PATHS.LOGIN_ATTEMPTS}/${sanitiseEmailKey(email)}`;
@@ -20,7 +25,10 @@ function getAttemptKey(email) {
 function useCountdown(lockedUntil) {
   const [remaining, setRemaining] = useState(0);
   useEffect(() => {
-    if (!lockedUntil) { setRemaining(0); return; }
+    if (!lockedUntil) {
+      setRemaining(0);
+      return;
+    }
     const tick = () => {
       const diff = lockedUntil - Date.now();
       setRemaining(diff > 0 ? diff : 0);
@@ -40,36 +48,47 @@ function formatMs(ms) {
 
 export default function AdminLogin() {
   const navigate = useNavigate();
-  const [email,        setEmail]        = useState("");
-  const [password,     setPassword]     = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error,        setError]        = useState("");
-  const [isLoading,    setIsLoading]    = useState(false);
-  const [lockedUntil,  setLockedUntil]  = useState(null);
-  const [failCount,    setFailCount]    = useState(0);
-  const [hasAttempted, setHasAttempted]  = useState(false);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [lockedUntil, setLockedUntil] = useState(null);
+  const [failCount, setFailCount] = useState(0);
+  const [hasAttempted, setHasAttempted] = useState(false);
   const remaining = useCountdown(lockedUntil);
 
-  // Check lockout state when email changes
   useEffect(() => {
     if (!email.includes("@")) return;
     let active = true;
-    get(ref(db, getAttemptKey(email.trim()))).then((snap) => {
-      if (!active) return;
-      const data = snap.val();
-      if (data) {
-        setFailCount(data.failCount ?? 0);
-        if (data.lockedUntil && data.lockedUntil > Date.now()) {
-          setLockedUntil(data.lockedUntil);
+    get(ref(db, getAttemptKey(email.trim())))
+      .then((snap) => {
+        if (!active) return;
+        const data = snap.val();
+        if (data) {
+          const lastAttemptAge = data.lastAttempt ? Date.now() - data.lastAttempt : Infinity;
+          const lockoutExpired = data.lockedUntil ? Date.now() > data.lockedUntil : true;
+
+          if (lockoutExpired && lastAttemptAge > LOCKOUT_MS) {
+            setFailCount(0);
+            setLockedUntil(null);
+          } else {
+            setFailCount(data.failCount ?? 0);
+            if (data.lockedUntil && data.lockedUntil > Date.now()) {
+              setLockedUntil(data.lockedUntil);
+            } else {
+              setLockedUntil(null);
+            }
+          }
         } else {
+          setFailCount(0);
           setLockedUntil(null);
         }
-      } else {
-        setFailCount(0);
-        setLockedUntil(null);
-      }
-    }).catch(() => {});
-    return () => { active = false; };
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, [email]);
 
   const isLocked = lockedUntil && remaining > 0;
@@ -78,7 +97,11 @@ export default function AdminLogin() {
     e.preventDefault();
     setError("");
 
-    if (!email.trim() || !password) {
+    // Capture the email at submit time so it stays consistent throughout
+    // the entire async flow, even if the user changes the input mid-flight.
+    const submittedEmail = email.trim();
+
+    if (!submittedEmail || !password) {
       setError("Please enter both email and password.");
       return;
     }
@@ -92,8 +115,8 @@ export default function AdminLogin() {
     setIsLoading(true);
     sessionStorage.setItem(LOGIN_FLAG_KEY, "1");
     try {
-      // Pre-check true lockout state to prevent race conditions on email change
-      const snap = await get(ref(db, getAttemptKey(email.trim())));
+      // Always fetch the latest attempt data for the SUBMITTED email
+      const snap = await get(ref(db, getAttemptKey(submittedEmail)));
       const data = snap.val();
       if (data && data.lockedUntil && data.lockedUntil > Date.now()) {
         const diff = data.lockedUntil - Date.now();
@@ -103,22 +126,28 @@ export default function AdminLogin() {
         sessionStorage.removeItem(LOGIN_FLAG_KEY);
         return;
       }
-      actualFailCount = data?.failCount || 0;
+      
+      const lastAttemptAge = data?.lastAttempt ? Date.now() - data.lastAttempt : Infinity;
+      const lockoutExpired = data?.lockedUntil ? Date.now() > data.lockedUntil : true;
 
-      const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      if (lockoutExpired && lastAttemptAge > LOCKOUT_MS) {
+        actualFailCount = 0;
+      } else {
+        actualFailCount = data?.failCount || 0;
+      }
 
-      // Check if user has a profile
-      const userSnap = await get(ref(db, `${DB_PATHS.USERS}/${credential.user.uid}`));
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        submittedEmail,
+        password,
+      );
+
+      const userSnap = await get(
+        ref(db, `${DB_PATHS.USERS}/${credential.user.uid}`),
+      );
       let profile = userSnap.val();
 
       if (!profile) {
-        // Bootstrap: First-time admin login — auto-create admin profile
-        // This handles the chicken-and-egg problem where rules require
-        // an admin profile to exist but it hasn't been created yet.
-        // The Firebase rules for /users/$uid allow writing if the writer
-        // is an admin, so we temporarily update rules to allow self-write,
-        // OR the rules already allow $uid === auth.uid for reads.
-        // We need open write rules for the bootstrap — use set on own UID.
         const adminProfile = {
           email: credential.user.email,
           displayName: "Administrator",
@@ -127,16 +156,19 @@ export default function AdminLogin() {
           createdAt: Date.now(),
         };
         try {
-          await set(ref(db, `${DB_PATHS.USERS}/${credential.user.uid}`), adminProfile);
+          await set(
+            ref(db, `${DB_PATHS.USERS}/${credential.user.uid}`),
+            adminProfile,
+          );
           profile = adminProfile;
         } catch (writeErr) {
-          // Can't write profile — rules are too restrictive for bootstrap
           await signOut(auth);
           sessionStorage.removeItem(LOGIN_FLAG_KEY);
           setError(
             "Admin profile doesn't exist and couldn't be created. " +
-            "Please add this account's profile to Firebase RTDB at /users/" +
-            credential.user.uid + " with role: 'admin'."
+              "Please add this account's profile to Firebase RTDB at /users/" +
+              credential.user.uid +
+              " with role: 'admin'.",
           );
           setIsLoading(false);
           return;
@@ -146,9 +178,10 @@ export default function AdminLogin() {
       if (profile.role !== "admin") {
         await signOut(auth);
         sessionStorage.removeItem(LOGIN_FLAG_KEY);
-        const msg = profile.role === "ranger"
-          ? "This login is for administrators only. Please use the Ranger / Staff Login page."
-          : "Access denied. This login is for administrators only.";
+        const msg =
+          profile.role === "ranger"
+            ? "This login is for administrators only. Please use the Ranger / Staff Login page."
+            : "Access denied. This login is for administrators only.";
         setError(msg);
         setIsLoading(false);
         return;
@@ -162,39 +195,50 @@ export default function AdminLogin() {
         return;
       }
 
-      // Clear lockout on success
-      await set(ref(db, getAttemptKey(email.trim())), {
+      await set(ref(db, getAttemptKey(submittedEmail)), {
         failCount: 0,
         lockedUntil: null,
       });
-      try { localStorage.removeItem(LS_KEY_ADMIN); } catch {}
+      try {
+        localStorage.removeItem(LS_KEY_ADMIN);
+      } catch {}
 
       sessionStorage.removeItem(LOGIN_FLAG_KEY);
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      setHasAttempted(true);
+      // Guard: only update state if the email field still matches what we submitted.
+      // This prevents stale async responses from corrupting a different email's state.
+      const emailStillMatches = email.trim() === submittedEmail;
+
+      if (emailStillMatches) setHasAttempted(true);
       const newFail = actualFailCount + 1;
       const shouldLock = newFail >= MAX_ATTEMPTS;
       const newLockedUntil = shouldLock ? Date.now() + LOCKOUT_MS : null;
 
-      // Persist email to localStorage so lockout survives page refresh
-      try { localStorage.setItem(LS_KEY_ADMIN, email.trim()); } catch {}
+      try {
+        localStorage.setItem(LS_KEY_ADMIN, submittedEmail);
+      } catch {}
 
-      await set(ref(db, getAttemptKey(email.trim())), {
+      // Always write to the correct (submitted) email's DB record
+      await set(ref(db, getAttemptKey(submittedEmail)), {
         failCount: newFail,
         lockedUntil: newLockedUntil,
         lastAttempt: Date.now(),
       }).catch(() => {});
 
-      setFailCount(newFail);
-      if (shouldLock) {
-        setLockedUntil(newLockedUntil);
-        setError("Too many failed attempts. Account locked for 30 minutes.");
-      } else {
-        const left = MAX_ATTEMPTS - newFail;
-        let msg = "Invalid email or password.";
-        if (left <= 2) msg += ` ${left} attempt${left === 1 ? "" : "s"} remaining before lockout.`;
-        setError(msg);
+      // Only update local UI state if the email hasn't changed
+      if (emailStillMatches) {
+        setFailCount(newFail);
+        if (shouldLock) {
+          setLockedUntil(newLockedUntil);
+          setError("Too many failed attempts. Account locked for 30 minutes.");
+        } else {
+          const left = MAX_ATTEMPTS - newFail;
+          let msg = "Invalid email or password.";
+          if (left <= 2)
+            msg += ` ${left} attempt${left === 1 ? "" : "s"} remaining before lockout.`;
+          setError(msg);
+        }
       }
     } finally {
       sessionStorage.removeItem(LOGIN_FLAG_KEY);
@@ -203,12 +247,26 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Branding */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Image at the bottom */}
+      <div className="absolute bottom-0 left-0 right-0 h-[40vh] pointer-events-none z-0 select-none overflow-hidden">
+        <img
+          src="/background.jpg"
+          alt=""
+          className="w-full h-full object-cover object-bottom opacity-15 translate-y-20 bottom-blend-mask"
+        />
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <img src="/bantay-dagat.png" alt="BantayDagat Logo" className="w-24 h-24 mx-auto mb-4 drop-shadow-lg object-contain" />
-          <h1 className="text-3xl font-header font-bold text-white mb-1">BantayDagat</h1>
+          <img
+            src="/bantay-dagat.png"
+            alt="BantayDagat Logo"
+            className="w-24 h-24 mx-auto mb-4 drop-shadow-lg object-contain"
+          />
+          <h1 className="text-3xl font-header font-bold text-white mb-1">
+            BantayDagat
+          </h1>
           <p className="text-slate-400 text-sm">Administrator Access Portal</p>
         </div>
 
@@ -227,15 +285,25 @@ export default function AdminLogin() {
                 <p className="text-sm font-bold text-red-400">Account Locked</p>
                 <p className="text-xs text-red-400/80">
                   Too many failed attempts. Try again in{" "}
-                  <span className="font-mono font-bold">{formatMs(remaining)}</span>.
+                  <span className="font-mono font-bold">
+                    {formatMs(remaining)}
+                  </span>
+                  .
                 </p>
               </div>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4"
+            autoComplete="off"
+          >
             <div>
-              <label htmlFor="admin-email" className="block text-sm font-medium text-slate-300 mb-2">
+              <label
+                htmlFor="admin-email"
+                className="block text-sm font-medium text-slate-300 mb-2"
+              >
                 Admin Gmail
               </label>
               <input
@@ -251,13 +319,16 @@ export default function AdminLogin() {
                 }}
                 autoComplete="username"
                 placeholder="admin@gmail.com"
-                disabled={isLoading || isLocked}
+                disabled={isLoading}
                 className="w-full px-4 py-2 rounded-lg border border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors disabled:opacity-60"
               />
             </div>
 
             <div>
-              <label htmlFor="admin-password" className="block text-sm font-medium text-slate-300 mb-2">
+              <label
+                htmlFor="admin-password"
+                className="block text-sm font-medium text-slate-300 mb-2"
+              >
                 Password
               </label>
               <div className="relative">
@@ -277,7 +348,11 @@ export default function AdminLogin() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                   tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
