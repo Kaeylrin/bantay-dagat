@@ -18,11 +18,11 @@ import {
 } from "@/lib/firebase";
 
 const THRESHOLDS = {
-  air_temperature: { safe: [20, 35], caution: [15, 38] },
-  temperature: { safe: [25, 32], caution: [20, 35] },
-  humidity: { safe: [50, 80], caution: [40, 90] },
-  ph: { safe: [6.8, 7.4], caution: [6.5, 7.8] },
-  turbidity: { safe: [0, 5], caution: [0, 10] },
+  air_temperature: { safe: [24, 32], caution: [20, 35] },
+  temperature: { safe: [26, 31], caution: [24, 33] },
+  humidity: { safe: [60, 85], caution: [50, 95] },
+  ph: { safe: [7.5, 8.3], caution: [7.0, 8.5] },
+  turbidity: { safe: [0, 8], caution: [0, 15] },
 };
 
 const SENSOR_META = {
