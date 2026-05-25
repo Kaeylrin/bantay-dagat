@@ -21,11 +21,11 @@ import {
 } from "@/lib/firebase";
 
 const THRESHOLDS = {
-  air_temperature: { safeMin: 20, safeMax: 35 },
-  temperature: { safeMin: 25, safeMax: 32 },
-  humidity: { safeMin: 50, safeMax: 80 },
-  ph: { safeMin: 6.8, safeMax: 7.4 },
-  turbidity: { safeMin: 0, safeMax: 5 },
+  air_temperature: { safeMin: 24, safeMax: 32 },
+  temperature: { safeMin: 26, safeMax: 31 },
+  humidity: { safeMin: 60, safeMax: 85 },
+  ph: { safeMin: 7.5, safeMax: 8.3 },
+  turbidity: { safeMin: 0, safeMax: 8 },
 };
 
 const TIME_RANGES = {
@@ -323,7 +323,7 @@ export default function HistoricalTrends() {
                     tick={{ fontSize: 11 }}
                     interval="preserveStartEnd"
                   />
-                  <YAxis domain={[6, 8]} />
+                  <YAxis domain={[6, 9]} />
                   <Tooltip {...chartStyle} />
                   <ReferenceLine
                     y={THRESHOLDS.ph.safeMin}
