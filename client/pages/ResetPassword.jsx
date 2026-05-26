@@ -115,8 +115,16 @@ export default function ResetPassword() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-        <div className="flex items-center gap-3 text-slate-400">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Background Image at the bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-[40vh] pointer-events-none z-0 select-none overflow-hidden">
+          <img
+            src="/background.jpg"
+            alt=""
+            className="w-full h-full object-cover object-bottom opacity-15 translate-y-20 bottom-blend-mask"
+          />
+        </div>
+        <div className="flex items-center gap-3 text-slate-400 relative z-10">
           <RefreshCw className="w-6 h-6 animate-spin" />
           <span className="text-sm">Verifying reset link…</span>
         </div>
@@ -127,26 +135,47 @@ export default function ResetPassword() {
   // ── Invalid / expired link ──
   if (status === "invalid" || status === "error") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Background Image at the bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-[40vh] pointer-events-none z-0 select-none overflow-hidden">
+          <img
+            src="/background.jpg"
+            alt=""
+            className="w-full h-full object-cover object-bottom opacity-15 translate-y-20 bottom-blend-mask"
+          />
+        </div>
+
+        <div className="w-full max-w-md relative z-10">
           <div className="text-center mb-8">
+            <img
+              src="/bantay-dagat.png"
+              alt="BantayDagat Logo"
+              className="w-24 h-24 mx-auto mb-4 drop-shadow-lg object-contain"
+            />
+            <h1 className="text-3xl font-header font-bold text-white mb-1">
+              BantayDagat
+            </h1>
+            <p className="text-slate-400 text-sm">Password Reset</p>
+          </div>
+
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-2xl border border-slate-700/50 p-8">
             <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-red-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-xl font-bold text-white text-center mb-2">
               Invalid Reset Link
-            </h1>
-            <p className="text-slate-400 text-sm">
+            </h2>
+            <p className="text-slate-400 text-sm text-center mb-6">
               {error || "This password reset link is invalid or has expired."}
             </p>
-          </div>
-          <div className="text-center space-y-3">
-            <Link
-              to="/login"
-              className="block text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
-            >
-              ← Back to Login
-            </Link>
+            <div className="pt-4 border-t border-slate-700/50 text-center">
+              <Link
+                to="/login"
+                className="block text-center text-sm text-slate-400 hover:text-emerald-400 transition-colors"
+              >
+                ← Back to Login
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -155,27 +184,48 @@ export default function ResetPassword() {
 
   if (status === "success") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Background Image at the bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-[40vh] pointer-events-none z-0 select-none overflow-hidden">
+          <img
+            src="/background.jpg"
+            alt=""
+            className="w-full h-full object-cover object-bottom opacity-15 translate-y-20 bottom-blend-mask"
+          />
+        </div>
+
+        <div className="w-full max-w-md relative z-10">
           <div className="text-center mb-8">
+            <img
+              src="/bantay-dagat.png"
+              alt="BantayDagat Logo"
+              className="w-24 h-24 mx-auto mb-4 drop-shadow-lg object-contain"
+            />
+            <h1 className="text-3xl font-header font-bold text-white mb-1">
+              BantayDagat
+            </h1>
+            <p className="text-slate-400 text-sm">Password Reset</p>
+          </div>
+
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-2xl border border-slate-700/50 p-8 text-center">
             <div className="w-16 h-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-8 h-8 text-emerald-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-xl font-bold text-white mb-2">
               Password Reset Successful
-            </h1>
-            <p className="text-slate-400 text-sm">
+            </h2>
+            <p className="text-slate-400 text-sm mb-6">
               Your password has been updated. You can now log in with your new
               password.
             </p>
-          </div>
-          <div className="text-center space-y-3">
-            <Link
-              to="/login"
-              className="inline-block bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium py-2.5 px-8 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg shadow-emerald-500/20"
-            >
-              Go to Login
-            </Link>
+            <div className="pt-4 border-t border-slate-700/50">
+              <Link
+                to="/login"
+                className="inline-block bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium py-2.5 px-8 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg shadow-emerald-500/20"
+              >
+                Go to Login
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -183,13 +233,26 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Image at the bottom */}
+      <div className="absolute bottom-0 left-0 right-0 h-[40vh] pointer-events-none z-0 select-none overflow-hidden">
+        <img
+          src="/background.jpg"
+          alt=""
+          className="w-full h-full object-cover object-bottom opacity-15 translate-y-20 bottom-blend-mask"
+        />
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20">
-            <KeyRound className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-1">BantayDagat</h1>
+          <img
+            src="/bantay-dagat.png"
+            alt="BantayDagat Logo"
+            className="w-24 h-24 mx-auto mb-4 drop-shadow-lg object-contain"
+          />
+          <h1 className="text-3xl font-header font-bold text-white mb-1">
+            BantayDagat
+          </h1>
           <p className="text-slate-400 text-sm">Password Reset</p>
         </div>
 
