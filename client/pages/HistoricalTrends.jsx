@@ -24,7 +24,6 @@ const THRESHOLDS = {
   air_temperature: { safeMin: 24, safeMax: 32 },
   temperature: { safeMin: 26, safeMax: 31 },
   humidity: { safeMin: 60, safeMax: 85 },
-  ph: { safeMin: 7.5, safeMax: 8.3 },
   turbidity: { safeMin: 0, safeMax: 8 },
 };
 
@@ -64,7 +63,6 @@ export default function HistoricalTrends() {
               air_temperature: entry.air_temperature ?? null,
               temperature: entry.temperature ?? null,
               humidity: entry.humidity ?? null,
-              ph: entry.ph ?? null,
               turbidity: entry.turbidity ?? null,
             }));
           setAllHistory(entries);
@@ -307,59 +305,9 @@ export default function HistoricalTrends() {
               </ResponsiveContainer>
             </div>
 
-            {/* pH */}
-            <div className="bg-white rounded-xl p-6 border border-secondary shadow-sm">
-              <h3 className="text-lg font-header font-bold text-foreground mb-4">
-                pH Level
-              </h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={chartData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="hsl(var(--secondary))"
-                  />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fontSize: 11 }}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis domain={[6, 9]} />
-                  <Tooltip {...chartStyle} />
-                  <ReferenceLine
-                    y={THRESHOLDS.ph.safeMin}
-                    stroke="hsl(var(--safe))"
-                    strokeDasharray="5 5"
-                    label={{
-                      value: "Min Safe",
-                      position: "right",
-                      fontSize: 11,
-                    }}
-                  />
-                  <ReferenceLine
-                    y={THRESHOLDS.ph.safeMax}
-                    stroke="hsl(var(--safe))"
-                    strokeDasharray="5 5"
-                    label={{
-                      value: "Max Safe",
-                      position: "right",
-                      fontSize: 11,
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="ph"
-                    stroke="hsl(var(--caution))"
-                    dot={false}
-                    strokeWidth={2}
-                    name="pH"
-                    connectNulls
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
 
             {/* Turbidity */}
-            <div className="bg-white rounded-xl p-6 border border-secondary shadow-sm lg:col-span-2">
+            <div className="bg-white rounded-xl p-6 border border-secondary shadow-sm">
               <h3 className="text-lg font-header font-bold text-foreground mb-4">
                 Turbidity (NTU)
               </h3>

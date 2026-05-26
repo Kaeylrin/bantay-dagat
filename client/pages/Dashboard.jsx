@@ -4,7 +4,6 @@ import {
   Thermometer,
   Wind,
   Droplets,
-  TestTube,
   Eye,
   AlertTriangle,
   CheckCircle2,
@@ -49,13 +48,6 @@ const SENSOR_CONFIG = [
     unit: "%",
     icon: Droplets,
     threshold: { safe: [60, 85], caution: [50, 95] },
-  },
-  {
-    key: "ph",
-    name: "pH Level",
-    unit: "pH",
-    icon: TestTube,
-    threshold: { safe: [7.5, 8.3], caution: [7.0, 8.5] },
   },
   {
     key: "turbidity",
@@ -152,7 +144,6 @@ export default function Dashboard() {
               air_temperature: e.air_temperature ?? null,
               temperature: e.temperature ?? null,
               humidity: e.humidity ?? null,
-              ph: e.ph ?? null,
               turbidity: e.turbidity ?? null,
             }));
           setTrendHistory(entries);
@@ -266,7 +257,7 @@ export default function Dashboard() {
           <h3 className="text-lg font-header font-bold text-foreground mb-4">
             Live Sensor Data
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {sensors.map((sensor) => {
               const Icon = sensor.icon;
               const sparkData = trendHistory.map((e) => ({

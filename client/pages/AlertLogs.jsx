@@ -21,7 +21,6 @@ const THRESHOLDS = {
   air_temperature: { safe: [24, 32], caution: [20, 35] },
   temperature: { safe: [26, 31], caution: [24, 33] },
   humidity: { safe: [60, 85], caution: [50, 95] },
-  ph: { safe: [7.5, 8.3], caution: [7.0, 8.5] },
   turbidity: { safe: [0, 8], caution: [0, 15] },
 };
 
@@ -29,7 +28,6 @@ const SENSOR_META = {
   air_temperature: { label: "Air Temp", unit: "°C" },
   temperature: { label: "Water Temp", unit: "°C" },
   humidity: { label: "Humidity", unit: "%" },
-  ph: { label: "pH Level", unit: "pH" },
   turbidity: { label: "Turbidity", unit: "NTU" },
 };
 
