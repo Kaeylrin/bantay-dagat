@@ -28,41 +28,48 @@ import {
   DB_PATHS,
 } from "@/lib/firebase";
 
+// Truncates to exactly 2 decimal places WITHOUT rounding
+// e.g. 27.456 → "27.45", 27.999 → "27.99"
+function truncTo2(value) {
+  if (value === null || value === undefined) return "--";
+  return (Math.floor(Number(value) * 100) / 100).toFixed(2);
+}
+
 const SENSOR_CONFIG = [
   {
     key: "air_temperature",
     name: "Air Temp",
     unit: "°C",
     icon: Wind,
-    threshold: { safe: [24, 32], caution: [20, 35] },
+    threshold: { safe: [25, 33], caution: [22, 36] },
   },
   {
     key: "temperature",
     name: "Water Temp",
     unit: "°C",
     icon: Thermometer,
-    threshold: { safe: [26, 31], caution: [24, 33] },
+    threshold: { safe: [26, 32], caution: [24, 34] },
   },
   {
     key: "humidity",
     name: "Humidity",
     unit: "%",
     icon: Droplets,
-    threshold: { safe: [60, 85], caution: [50, 95] },
+    threshold: { safe: [60, 85], caution: [50, 90] },
   },
   {
     key: "ph",
     name: "pH Level",
     unit: "pH",
     icon: TestTube,
-    threshold: { safe: [7.5, 8.3], caution: [7.0, 8.5] },
+    threshold: { safe: [7.8, 8.3], caution: [7.5, 8.5] },
   },
   {
     key: "turbidity",
     name: "Turbidity",
     unit: "NTU",
     icon: Eye,
-    threshold: { safe: [0, 8], caution: [0, 15] },
+    threshold: { safe: [0, 10], caution: [0, 20] },
   },
 ];
 
@@ -293,9 +300,7 @@ export default function Dashboard() {
                   </p>
                   <div className="mb-3">
                     <p className="text-3xl font-header font-bold text-foreground">
-                      {sensor.value !== null
-                        ? Number(sensor.value).toFixed(1)
-                        : "--"}
+                      {truncTo2(sensor.value)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {sensor.unit}
@@ -315,7 +320,7 @@ export default function Dashboard() {
                               padding: "6px",
                               fontSize: "12px",
                             }}
-                            formatter={(v) => [`${v} ${sensor.unit}`, ""]}
+                            formatter={(v) => [`${truncTo2(v)} ${sensor.unit}`, ""]}
                           />
                           <Line
                             type="monotone"
