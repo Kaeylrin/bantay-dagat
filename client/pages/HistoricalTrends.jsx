@@ -21,11 +21,11 @@ import {
 } from "@/lib/firebase";
 
 const THRESHOLDS = {
-  air_temperature: { safeMin: 24, safeMax: 32 },
-  temperature: { safeMin: 26, safeMax: 31 },
+  air_temperature: { safeMin: 25, safeMax: 33 },
+  temperature: { safeMin: 26, safeMax: 32 },
   humidity: { safeMin: 60, safeMax: 85 },
-  ph: { safeMin: 7.5, safeMax: 8.3 },
-  turbidity: { safeMin: 0, safeMax: 8 },
+  ph: { safeMin: 7.8, safeMax: 8.3 },
+  turbidity: { safeMin: 0, safeMax: 10 },
 };
 
 const TIME_RANGES = {

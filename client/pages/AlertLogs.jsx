@@ -18,11 +18,11 @@ import {
 } from "@/lib/firebase";
 
 const THRESHOLDS = {
-  air_temperature: { safe: [24, 32], caution: [20, 35] },
-  temperature: { safe: [26, 31], caution: [24, 33] },
-  humidity: { safe: [60, 85], caution: [50, 95] },
-  ph: { safe: [7.5, 8.3], caution: [7.0, 8.5] },
-  turbidity: { safe: [0, 8], caution: [0, 15] },
+  air_temperature: { safe: [25, 33], caution: [22, 36] },
+  temperature: { safe: [26, 32], caution: [24, 34] },
+  humidity: { safe: [60, 85], caution: [50, 90] },
+  ph: { safe: [7.8, 8.3], caution: [7.5, 8.5] },
+  turbidity: { safe: [0, 10], caution: [0, 20] },
 };
 
 const SENSOR_META = {
@@ -65,8 +65,9 @@ const cellColor = (s) =>
     danger: "text-danger font-bold",
   })[s] ?? "text-muted-foreground";
 
+// Truncates to exactly 2 decimal places WITHOUT rounding
 const fmt = (v, unit) =>
-  v !== null && v !== undefined ? `${Number(v).toFixed(2)} ${unit}` : "—";
+  v !== null && v !== undefined ? `${(Math.floor(Number(v) * 100) / 100).toFixed(2)} ${unit}` : "—";
 
 const fmtTs = (ts) =>
   ts
