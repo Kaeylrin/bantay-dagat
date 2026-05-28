@@ -106,6 +106,7 @@ export default function Dashboard() {
   const [connectionState, setConnectionState] = useState("connecting");
   const [lastUpdated, setLastUpdated] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     const latestRef = ref(db, DB_PATHS.LATEST);
@@ -253,175 +254,187 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Status Summary */}
-        <div className="mb-6 sm:mb-8 grid grid-cols-2 gap-3 sm:gap-4">
-          <div className="bg-white rounded-xl p-4 border border-secondary shadow-sm">
-            <p className="text-xs text-muted-foreground font-medium mb-2">
-              CAUTION
-            </p>
-            <p className="text-3xl font-header font-bold text-caution">
-              {cautionCount}
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">Warning level</p>
-          </div>
-          <div className="bg-white rounded-xl p-4 border border-secondary shadow-sm">
-            <p className="text-xs text-muted-foreground font-medium mb-2">
-              DANGER
-            </p>
-            <p className="text-3xl font-header font-bold text-danger">
-              {dangerCount}
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">Critical level</p>
-          </div>
-        </div>
-
-        {/* GO / NO-GO */}
-        {latestReading && banner ? (
-          <div
-            className={`mb-6 sm:mb-8 rounded-xl p-5 sm:p-8 border-2 shadow-md transition-all ${banner.bgClass}`}
-          >
-            <div className="flex items-start gap-3">
-              <banner.icon className={`w-8 h-8 ${banner.textClass} shrink-0 mt-1`} />
-              <div>
-                <h2 className={`text-xl sm:text-3xl font-header font-bold mb-2 ${banner.textClass}`}>
-                  {banner.title}
-                </h2>
-                <p className={`text-sm sm:text-lg font-medium ${banner.textClass}`}>
-                  {banner.desc}
-                </p>
+        {/* Top Summary Row (Alert Banner + Stats) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          {/* Banner (GO / NO-GO) - spans 2 cols on desktop */}
+          <div className="lg:col-span-2">
+            {latestReading && banner ? (
+              <div
+                className={`h-full flex items-center rounded-xl p-5 sm:p-6 border-2 shadow-sm transition-all ${banner.bgClass}`}
+              >
+                <div className="flex items-start gap-3">
+                  <banner.icon className={`w-8 h-8 ${banner.textClass} shrink-0 mt-0.5`} />
+                  <div>
+                    <h2 className={`text-lg sm:text-xl font-header font-bold mb-1 ${banner.textClass}`}>
+                      {banner.title}
+                    </h2>
+                    <p className={`text-xs sm:text-sm font-medium ${banner.textClass} opacity-90`}>
+                      {banner.desc}
+                    </p>
+                  </div>
+                </div>
               </div>
+            ) : (
+              <div className="h-full flex items-center rounded-xl p-5 sm:p-6 border-2 border-secondary bg-secondary/10 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <RefreshCw className="w-6 h-6 text-muted-foreground animate-spin shrink-0" />
+                  <div>
+                    <h2 className="text-base font-header font-bold text-muted-foreground mb-0.5">
+                      Awaiting Sensor Data
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      The release assessment will appear once the Arduino begins transmitting.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Stats Summary - 1 col on desktop */}
+          <div className="bg-white rounded-xl border border-secondary shadow-sm p-4 flex justify-around items-center h-full min-h-[90px]">
+            <div className="text-center">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">
+                Caution
+              </p>
+              <p className="text-2xl font-header font-bold text-caution leading-none">
+                {cautionCount}
+              </p>
             </div>
-          </div>
-        ) : !latestReading ? (
-          <div className="mb-8 rounded-xl p-8 border-2 border-secondary bg-secondary/10 shadow-md">
-            <div className="flex items-center gap-3">
-              <RefreshCw className="w-8 h-8 text-muted-foreground animate-spin shrink-0" />
-              <div>
-                <h2 className="text-2xl font-header font-bold text-muted-foreground mb-1">
-                  Awaiting Sensor Data
-                </h2>
-                <p className="text-muted-foreground">
-                  The release assessment will appear once the Arduino begins
-                  transmitting.
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {/* How the GO/NO-GO assessment works */}
-        <div className="mb-8 bg-white rounded-xl border border-secondary shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
-              <TestTube className="w-5 h-5" />
-            </span>
-            <h3 className="text-lg font-header font-bold text-foreground">
-              How the GO/NO-GO Assessment Works
-            </h3>
-          </div>
-          
-          <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-            To support release operations for the <strong>five local sea turtle species</strong> found in Labac, Naic, Cavite — 
-            <em> Green Sea Turtle, Leatherback, Loggerhead, Hawksbill, and Olive Ridley</em> — the system utilizes a 
-            <strong> "one-size-fits-all"</strong> set of environmental thresholds. These thresholds represent the overlapping safe physiological limits of all 5 species.
-          </p>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Logic Rules */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">Decision Logic</h4>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-safe/5 border border-safe/10">
-                  <CheckCircle2 className="w-5 h-5 text-safe shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-bold text-safe">GO: SAFE TO RELEASE</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">All 5 environmental parameters are within their <strong>Safe Ranges</strong>.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-caution/5 border border-caution/10">
-                  <CheckCircle2 className="w-5 h-5 text-caution shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-bold text-caution">GO WITH CAUTION: SAFE TO RELEASE</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Exactly <strong>1 parameter</strong> is within its Caution Range, and the other 4 are Safe.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-orange-500/5 border border-orange-500/10">
-                  <AlertTriangle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-bold text-orange-600">NO-GO: DO NOT RELEASE (CAUTION)</p>
-                    <p className="text-xs text-muted-foreground mt-0.5"><strong>2 or more parameters</strong> are within their Caution Ranges (suboptimal release conditions).</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-danger/5 border border-danger/10">
-                  <AlertTriangle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-bold text-danger">NO-GO: DO NOT RELEASE (DANGER)</p>
-                    <p className="text-xs text-muted-foreground mt-0.5"><strong>1 or more parameters</strong> are within their critical <strong>Danger Ranges</strong>.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Threshold Ranges Table */}
-            <div>
-              <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">Threshold Values</h4>
-              <div className="border border-secondary rounded-lg overflow-hidden">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-secondary/30 border-b border-secondary">
-                      <th className="p-2 font-bold text-foreground">Parameter</th>
-                      <th className="p-2 font-bold text-safe">Safe (GO)</th>
-                      <th className="p-2 font-bold text-caution">Caution</th>
-                      <th className="p-2 font-bold text-danger">Danger</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-secondary">
-                      <td className="p-2 font-medium text-foreground">Air Temp</td>
-                      <td className="p-2 text-safe">25.00 – 32.00 °C</td>
-                      <td className="p-2 text-caution">22.00 – 24.99 / 32.01 – 35.00</td>
-                      <td className="p-2 text-danger">&lt; 22.00 / &gt; 35.00</td>
-                    </tr>
-                    <tr className="border-b border-secondary">
-                      <td className="p-2 font-medium text-foreground">Water Temp</td>
-                      <td className="p-2 text-safe">26.00 – 31.00 °C</td>
-                      <td className="p-2 text-caution">24.00 – 25.99 / 31.01 – 33.00</td>
-                      <td className="p-2 text-danger">&lt; 24.00 / &gt; 33.00</td>
-                    </tr>
-                    <tr className="border-b border-secondary">
-                      <td className="p-2 font-medium text-foreground">Humidity</td>
-                      <td className="p-2 text-safe">65.00 – 85.00 %</td>
-                      <td className="p-2 text-caution">55.00 – 64.99 / 85.01 – 90.00</td>
-                      <td className="p-2 text-danger">&lt; 55.00 / &gt; 90.00</td>
-                    </tr>
-                    <tr className="border-b border-secondary">
-                      <td className="p-2 font-medium text-foreground">pH Level</td>
-                      <td className="p-2 text-safe">7.80 – 8.30</td>
-                      <td className="p-2 text-caution">7.50 – 7.79 / 8.31 – 8.50</td>
-                      <td className="p-2 text-danger">&lt; 7.50 / &gt; 8.50</td>
-                    </tr>
-                    <tr>
-                      <td className="p-2 font-medium text-foreground">Turbidity</td>
-                      <td className="p-2 text-safe">0.00 – 8.00 NTU</td>
-                      <td className="p-2 text-caution">8.01 – 15.00 NTU</td>
-                      <td className="p-2 text-danger">&gt; 15.00 NTU</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-                <span className="font-bold">Supported local species:</span>
-                <span>Green Sea Turtle · Leatherback · Loggerhead · Hawksbill · Olive Ridley</span>
-              </div>
+            <div className="w-[1px] h-10 bg-secondary" />
+            <div className="text-center">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-1">
+                Danger
+              </p>
+              <p className="text-2xl font-header font-bold text-danger leading-none">
+                {dangerCount}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Sensor Cards */}
+        {/* Collapsible How the GO/NO-GO assessment works */}
+        {showGuide && (
+          <div className="mb-6 bg-white rounded-xl border border-secondary shadow-sm p-6 animate-in fade-in slide-in-from-top-4 duration-200">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                <TestTube className="w-5 h-5" />
+              </span>
+              <h3 className="text-lg font-header font-bold text-foreground">
+                How the GO/NO-GO Assessment Works
+              </h3>
+            </div>
+            
+            <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+              Environmental thresholds are calibrated to align with the combined physiological tolerances of the five local sea turtle species nesting in Labac, Naic, Cavite (Green Sea, Leatherback, Loggerhead, Hawksbill, and Olive Ridley). This ensures safe releases under unified local water quality guidelines.
+            </p>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Logic Rules */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">Decision Logic</h4>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-safe/5 border border-safe/10">
+                    <CheckCircle2 className="w-5 h-5 text-safe shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-safe">GO: SAFE TO RELEASE</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">All 5 environmental parameters are within their <strong>Safe Ranges</strong>.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-caution/5 border border-caution/10">
+                    <CheckCircle2 className="w-5 h-5 text-caution shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-caution">GO WITH CAUTION: SAFE TO RELEASE</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Exactly <strong>1 parameter</strong> is within its Caution Range, and the other 4 are Safe.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-orange-500/5 border border-orange-500/10">
+                    <AlertTriangle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-orange-600">NO-GO: DO NOT RELEASE (CAUTION)</p>
+                      <p className="text-xs text-muted-foreground mt-0.5"><strong>2 or more parameters</strong> are within their Caution Ranges (suboptimal release conditions).</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-danger/5 border border-danger/10">
+                    <AlertTriangle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-danger">NO-GO: DO NOT RELEASE (DANGER)</p>
+                      <p className="text-xs text-muted-foreground mt-0.5"><strong>1 or more parameters</strong> are within their critical <strong>Danger Ranges</strong>.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Threshold Ranges Table */}
+              <div>
+                <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">Threshold Values</h4>
+                <div className="border border-secondary rounded-lg overflow-hidden">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-secondary/30 border-b border-secondary">
+                        <th className="p-2 font-bold text-foreground">Parameter</th>
+                        <th className="p-2 font-bold text-safe">Safe (GO)</th>
+                        <th className="p-2 font-bold text-caution">Caution</th>
+                        <th className="p-2 font-bold text-danger">Danger</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-secondary">
+                        <td className="p-2 font-medium text-foreground">Air Temp</td>
+                        <td className="p-2 text-safe">25.00 – 32.00 °C</td>
+                        <td className="p-2 text-caution">22.00 – 24.99 / 32.01 – 35.00</td>
+                        <td className="p-2 text-danger">&lt; 22.00 / &gt; 35.00</td>
+                      </tr>
+                      <tr className="border-b border-secondary">
+                        <td className="p-2 font-medium text-foreground">Water Temp</td>
+                        <td className="p-2 text-safe">26.00 – 31.00 °C</td>
+                        <td className="p-2 text-caution">24.00 – 25.99 / 31.01 – 33.00</td>
+                        <td className="p-2 text-danger">&lt; 24.00 / &gt; 33.00</td>
+                      </tr>
+                      <tr className="border-b border-secondary">
+                        <td className="p-2 font-medium text-foreground">Humidity</td>
+                        <td className="p-2 text-safe">65.00 – 85.00 %</td>
+                        <td className="p-2 text-caution">55.00 – 64.99 / 85.01 – 90.00</td>
+                        <td className="p-2 text-danger">&lt; 55.00 / &gt; 90.00</td>
+                      </tr>
+                      <tr className="border-b border-secondary">
+                        <td className="p-2 font-medium text-foreground">pH Level</td>
+                        <td className="p-2 text-safe">7.80 – 8.30</td>
+                        <td className="p-2 text-caution">7.50 – 7.79 / 8.31 – 8.50</td>
+                        <td className="p-2 text-danger">&lt; 7.50 / &gt; 8.50</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 font-medium text-foreground">Turbidity</td>
+                        <td className="p-2 text-safe">0.00 – 8.00 NTU</td>
+                        <td className="p-2 text-caution">8.01 – 15.00 NTU</td>
+                        <td className="p-2 text-danger">&gt; 15.00 NTU</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                  <span className="font-bold">Supported local species:</span>
+                  <span>Green Sea Turtle · Leatherback · Loggerhead · Hawksbill · Olive Ridley</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Live Sensor Data */}
         <div className="mb-8">
-          <h3 className="text-lg font-header font-bold text-foreground mb-4">
-            Live Sensor Data
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-header font-bold text-foreground">
+              Live Sensor Data
+            </h3>
+            <button
+              onClick={() => setShowGuide(!showGuide)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-secondary bg-white text-xs font-semibold text-muted-foreground hover:bg-secondary/40 transition-colors shadow-sm"
+            >
+              <TestTube className="w-3.5 h-3.5 text-primary" />
+              {showGuide ? "Hide Assessment Guide" : "Show Assessment Guide"}
+            </button>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
             {sensors.map((sensor) => {
               const Icon = sensor.icon;
