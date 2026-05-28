@@ -25,7 +25,7 @@ const THRESHOLDS = {
   temperature: { safeMin: 26, safeMax: 31 },
   humidity: { safeMin: 65, safeMax: 85 },
   ph: { safeMin: 7.8, safeMax: 8.3 },
-  turbidity: { safeMin: 0, safeMax: 8 },
+  turbidity: { safeMin: 0, safeMax: 25 },
 };
 
 const TIME_RANGES = {
@@ -374,7 +374,7 @@ export default function HistoricalTrends() {
                     tick={{ fontSize: 11 }}
                     interval="preserveStartEnd"
                   />
-                  <YAxis domain={[0, 30]} />
+                  <YAxis domain={[0, 60]} />
                   <Tooltip {...chartStyle} />
                   <ReferenceLine
                     y={THRESHOLDS.turbidity.safeMax}

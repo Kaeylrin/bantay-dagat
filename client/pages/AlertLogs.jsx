@@ -22,7 +22,7 @@ const THRESHOLDS = {
   temperature: { safe: [26, 31], caution: [24, 33] },
   humidity: { safe: [65, 85], caution: [55, 90] },
   ph: { safe: [7.8, 8.3], caution: [7.5, 8.5] },
-  turbidity: { safe: [0, 8], caution: [0, 15] },
+  turbidity: { safe: [0, 25], caution: [0, 50] },
 };
 
 const SENSOR_META = {
