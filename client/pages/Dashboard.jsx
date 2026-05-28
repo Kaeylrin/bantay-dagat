@@ -69,7 +69,7 @@ const SENSOR_CONFIG = [
     name: "Turbidity",
     unit: "NTU",
     icon: Eye,
-    threshold: { safe: [0, 8], caution: [0, 15] },
+    threshold: { safe: [0, 25], caution: [0, 50] },
   },
 ];
 
@@ -405,9 +405,9 @@ export default function Dashboard() {
                       </tr>
                       <tr>
                         <td className="p-2 font-medium text-foreground">Turbidity</td>
-                        <td className="p-2 text-safe">0.00 – 8.00 NTU</td>
-                        <td className="p-2 text-caution">8.01 – 15.00 NTU</td>
-                        <td className="p-2 text-danger">&gt; 15.00 NTU</td>
+                        <td className="p-2 text-safe">0.00 – 25.00 NTU</td>
+                        <td className="p-2 text-caution">25.01 – 50.00 NTU</td>
+                        <td className="p-2 text-danger">&gt; 50.00 NTU</td>
                       </tr>
                     </tbody>
                   </table>
