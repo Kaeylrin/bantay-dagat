@@ -18,11 +18,11 @@ import {
 } from "@/lib/firebase";
 
 const THRESHOLDS = {
-  air_temperature: { safe: [25, 33], caution: [22, 36] },
-  temperature: { safe: [26, 32], caution: [24, 34] },
-  humidity: { safe: [60, 85], caution: [50, 90] },
+  air_temperature: { safe: [25, 32], caution: [22, 35] },
+  temperature: { safe: [26, 31], caution: [24, 33] },
+  humidity: { safe: [65, 85], caution: [55, 90] },
   ph: { safe: [7.8, 8.3], caution: [7.5, 8.5] },
-  turbidity: { safe: [0, 10], caution: [0, 20] },
+  turbidity: { safe: [0, 8], caution: [0, 15] },
 };
 
 const SENSOR_META = {
@@ -45,18 +45,32 @@ function deriveStatus(key, value) {
 function overallStatus(reading) {
   const keys = Object.keys(SENSOR_META);
   const statuses = keys.map((k) => deriveStatus(k, reading[k]));
-  if (statuses.includes("danger")) return "danger";
-  if (statuses.includes("caution")) return "caution";
-  if (statuses.every((s) => s === "unknown")) return "unknown";
+  const dangerCount = statuses.filter((s) => s === "danger").length;
+  const cautionCount = statuses.filter((s) => s === "caution").length;
+  const unknownCount = statuses.filter((s) => s === "unknown").length;
+
+  if (dangerCount >= 1) return "danger";
+  if (cautionCount >= 2) return "nogo_caution";
+  if (cautionCount === 1) return "go_caution";
+  if (unknownCount === keys.length) return "unknown";
   return "safe";
 }
 
 const statusBadge = (s) =>
   ({
     safe: "bg-safe/20 text-safe",
-    caution: "bg-caution/20 text-caution",
+    go_caution: "bg-caution/20 text-caution",
+    nogo_caution: "bg-orange-500/20 text-orange-600",
     danger: "bg-danger/20 text-danger",
   })[s] ?? "bg-secondary text-muted-foreground";
+
+const statusLabel = (s) =>
+  ({
+    safe: "GO",
+    go_caution: "GO (CAUTION)",
+    nogo_caution: "NO-GO (CAUTION)",
+    danger: "NO-GO (DANGER)",
+  })[s] ?? String(s).toUpperCase();
 
 const cellColor = (s) =>
   ({
@@ -233,10 +247,11 @@ export default function AlertLogs() {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="px-3 py-1.5 rounded-lg border border-secondary bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <option value="all">All</option>
-              <option value="safe">Safe</option>
-              <option value="caution">Caution</option>
-              <option value="danger">Danger</option>
+              <option value="all">All Statuses</option>
+              <option value="safe">GO (All Safe)</option>
+              <option value="go_caution">GO (With Caution)</option>
+              <option value="nogo_caution">NO-GO (Caution)</option>
+              <option value="danger">NO-GO (Danger)</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
@@ -288,7 +303,7 @@ export default function AlertLogs() {
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusBadge(overall)}`}
                     >
-                      {overall.toUpperCase()}
+                      {statusLabel(overall)}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -374,7 +389,7 @@ export default function AlertLogs() {
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs font-bold ${statusBadge(overall)}`}
                           >
-                            {overall.toUpperCase()}
+                            {statusLabel(overall)}
                           </span>
                         </td>
                         {sensorKeys.map(([k, m]) => {
