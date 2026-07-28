@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { handleDeleteUser, requireAdmin } from "./routes/admin-auth.js";
+import { handleSendResetEmail } from "./routes/send-reset-email.js";
 
 export function createServer() {
   const app = express();
@@ -15,6 +16,7 @@ export function createServer() {
   );
 
   app.delete("/api/admin/delete-user", requireAdmin, handleDeleteUser);
+  app.post("/api/admin/send-reset-email", requireAdmin, handleSendResetEmail);
 
   return app;
 }

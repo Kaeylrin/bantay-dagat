@@ -108,24 +108,28 @@ function RangerItem({ ranger }) {
   const handleResetPassword = async () => {
     setBusy(true);
     try {
-      const actionCodeSettings = {
-        url: `https://bantaydagat.site/reset-password`,
-        handleCodeInApp: true,
-      };
-      await sendPasswordResetEmail(auth, ranger.email, actionCodeSettings);
+      const idToken = await auth.currentUser.getIdToken();
+      const response = await fetch("/api/admin/send-reset-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ email: ranger.email }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to send reset email.");
+
       showFeedback(
         "success",
         `Password reset email sent to ${ranger.email}. Check their inbox.`,
       );
     } catch (e) {
-      if (e.code === "auth/user-not-found") {
-        showFeedback("error", "This user no longer exists in Firebase Auth.");
-      } else {
-        showFeedback("error", e.message);
-      }
+      showFeedback("error", e.message);
     }
     setBusy(false);
   };
+
 
   const handleDelete = async () => {
     setBusy(true);
