@@ -95,20 +95,13 @@ const fmtTs = (ts) =>
       })
     : "—";
 
-const TABS = [
-  { id: "all", label: "All Readings" },
-  { id: "alerts", label: "NO-GO Alerts" },
-];
-
 export default function AlertLogs() {
   const [readings, setReadings] = useState([]);
-  const [alerts, setAlerts] = useState([]);
   const [connectionState, setConnectionState] = useState("connecting");
   const [errorMessage, setErrorMessage] = useState(null);
   const [sortDir, setSortDir] = useState("desc");
   const [filterStatus, setFilterStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     const histRef = ref(db, DB_PATHS.READINGS);
@@ -136,32 +129,12 @@ export default function AlertLogs() {
       },
     );
 
-    const alertRef = ref(db, DB_PATHS.ALERTS);
-
-    onValue(
-      alertRef,
-      (snap) => {
-        const data = snap.val();
-        if (data) {
-          const parsed = Object.entries(data).map(([key, raw]) => ({
-            id: key,
-            ...mapArduinoReading(raw),
-          }));
-          setAlerts(parsed);
-        } else {
-          setAlerts([]);
-        }
-      },
-      () => {},
-    );
-
     return () => {
       off(histRef);
-      off(alertRef);
     };
   }, []);
 
-  const dataset = activeTab === "alerts" ? alerts : readings;
+  const dataset = readings;
 
   const sorted = useMemo(() => {
     let list = [...dataset];
@@ -200,7 +173,7 @@ export default function AlertLogs() {
           </h2>
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/40 px-3 py-1.5 rounded-full">
             <Database className="w-3 h-3" />
-            {readings.length} readings · {alerts.length} alerts
+            {readings.length} readings
           </div>
         </div>
 
@@ -216,25 +189,6 @@ export default function AlertLogs() {
             {errorMessage || "Unable to load from Firebase."}
           </div>
         )}
-
-        {/* Tabs */}
-        <div className="flex gap-2 mb-5 bg-secondary/30 rounded-xl p-1.5 border border-secondary">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all text-sm font-medium ${
-                activeTab === tab.id
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-foreground hover:bg-secondary"
-              }`}
-            >
-              {tab.id === "alerts" && <AlertTriangle className="w-4 h-4" />}
-              {tab.id === "all" && <Database className="w-4 h-4" />}
-              {tab.label}
-            </button>
-          ))}
-        </div>
 
         {/* Filters */}
         <div className="mb-5 flex flex-wrap gap-4 items-center">
@@ -413,9 +367,7 @@ export default function AlertLogs() {
                       className="px-6 py-8 text-center text-muted-foreground"
                     >
                       {dataset.length === 0
-                        ? activeTab === "alerts"
-                          ? "No NO-GO alerts found in the database."
-                          : "No sensor readings found in the database."
+                        ? "No sensor readings found in the database."
                         : "No readings match the selected filter."}
                     </td>
                   </tr>
@@ -428,7 +380,7 @@ export default function AlertLogs() {
         <div className="mt-5 bg-secondary/30 rounded-xl p-4 border border-secondary">
           <p className="text-sm text-muted-foreground">
             {connectionState === "live"
-              ? `Showing ${sorted.length} of ${dataset.length} ${activeTab === "alerts" ? "alerts" : "readings"} — live from ${activeTab === "alerts" ? DB_PATHS.ALERTS : DB_PATHS.READINGS}`
+              ? `Showing ${sorted.length} of ${dataset.length} readings — live from ${DB_PATHS.READINGS}`
               : connectionState === "connecting"
                 ? "Loading from Firebase Realtime Database…"
                 : "Firebase connection unavailable."}
