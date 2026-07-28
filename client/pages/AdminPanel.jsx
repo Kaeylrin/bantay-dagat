@@ -110,7 +110,7 @@ function RangerItem({ ranger }) {
     try {
       const actionCodeSettings = {
         url: `https://bantaydagat.site/reset-password`,
-        handleCodeInApp: false,
+        handleCodeInApp: true,
       };
       await sendPasswordResetEmail(auth, ranger.email, actionCodeSettings);
       showFeedback(

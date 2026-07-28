@@ -57,7 +57,7 @@ export default function ResetPassword() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!oobCode || mode !== "resetPassword") {
+    if (!oobCode) {
       setStatus("invalid");
       return;
     }
