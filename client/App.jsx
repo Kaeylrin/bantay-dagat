@@ -94,6 +94,7 @@ export default function App() {
             element={<AdminRoute element={<AdminPanel />} />}
           />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/__/auth/action" element={<ResetPassword />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
