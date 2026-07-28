@@ -108,12 +108,9 @@ function RangerItem({ ranger }) {
   const handleResetPassword = async () => {
     setBusy(true);
     try {
-      const origin = window.location.origin.includes("localhost")
-        ? window.location.origin
-        : "https://bantaydagat.site";
       const actionCodeSettings = {
-        url: `${origin}/reset-password`,
-        handleCodeInApp: true,
+        url: `https://bantaydagat.site/reset-password`,
+        handleCodeInApp: false,
       };
       await sendPasswordResetEmail(auth, ranger.email, actionCodeSettings);
       showFeedback(
