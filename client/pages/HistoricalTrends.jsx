@@ -21,6 +21,8 @@ import {
   TrendingUp,
   BarChart3,
   Layers,
+  Download,
+  FileText,
 } from "lucide-react";
 import {
   db,
@@ -88,6 +90,71 @@ function readingReleaseStatus(entry) {
   if (cautionCount >= 2) return "nogo_caution";
   if (cautionCount === 1) return "go_caution";
   return "go";
+}
+
+// ── Export helpers ──────────────────────────────────────────────────────────
+function exportTrendsCSV(data, timeLabel) {
+  const headers = ["Timestamp", "Air Temp (°C)", "Water Temp (°C)", "Humidity (%)", "pH", "Turbidity (NTU)", "Release Status"];
+  const rows = data.map((e) => [
+    new Date(e.timestamp).toLocaleString("en-PH"),
+    e.air_temperature ?? "",
+    e.temperature ?? "",
+    e.humidity ?? "",
+    e.ph ?? "",
+    e.turbidity ?? "",
+    readingReleaseStatus(e).toUpperCase().replace(/_/g, " "),
+  ]);
+  const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `bantay-dagat-trends-${timeLabel.replace(/\s+/g, "-").toLowerCase()}-${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportTrendsPDF(data, timeLabel) {
+  const statusMap = { go: "GO", go_caution: "GO (Caution)", nogo_caution: "NO-GO (Caution)", danger: "NO-GO (Danger)" };
+  const rows = data.map((e) => {
+    const s = readingReleaseStatus(e);
+    const color = s === "go" ? "#16a34a" : s === "go_caution" ? "#d97706" : s === "nogo_caution" ? "#ea580c" : "#dc2626";
+    return `<tr>
+      <td>${new Date(e.timestamp).toLocaleString("en-PH")}</td>
+      <td>${e.air_temperature != null ? Number(e.air_temperature).toFixed(2) : "—"}</td>
+      <td>${e.temperature != null ? Number(e.temperature).toFixed(2) : "—"}</td>
+      <td>${e.humidity != null ? Number(e.humidity).toFixed(2) : "—"}</td>
+      <td>${e.ph != null ? Number(e.ph).toFixed(2) : "—"}</td>
+      <td>${e.turbidity != null ? Number(e.turbidity).toFixed(2) : "—"}</td>
+      <td style="color:${color};font-weight:bold">${statusMap[s] ?? s}</td>
+    </tr>`;
+  }).join("");
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>Bantay Dagat – Historical Trends (${timeLabel})</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 24px; color: #1a1a2e; }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    p.meta { font-size: 12px; color: #666; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #f0f4f8; padding: 8px 10px; text-align: left; border: 1px solid #cdd5e0; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+    td { padding: 7px 10px; border: 1px solid #e2e8f0; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    @media print { body { padding: 0; } }
+  </style></head><body>
+  <h1>Bantay Dagat – Historical Water Quality Trends</h1>
+  <p class="meta">Period: ${timeLabel} &nbsp;·&nbsp; Exported: ${new Date().toLocaleString("en-PH")} &nbsp;·&nbsp; ${data.length} readings</p>
+  <table>
+    <thead><tr><th>Timestamp</th><th>Air Temp (°C)</th><th>Water Temp (°C)</th><th>Humidity (%)</th><th>pH</th><th>Turbidity (NTU)</th><th>Release Status</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  </body></html>`;
+
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 400);
 }
 
 export default function HistoricalTrends() {
@@ -319,6 +386,28 @@ export default function HistoricalTrends() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* Export Buttons */}
+            {hasData && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => exportTrendsCSV(filteredHistory, TIME_LABELS[timeRange])}
+                  title="Export data as CSV"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-safe/10 text-safe border border-safe/30 hover:bg-safe/20 transition-all"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  CSV
+                </button>
+                <button
+                  onClick={() => exportTrendsPDF(filteredHistory, TIME_LABELS[timeRange])}
+                  title="Export data as PDF"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-all"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  PDF
+                </button>
+              </div>
+            )}
+
             {/* Graph Type Selector */}
             <div className="flex items-center bg-secondary/30 p-1 rounded-xl border border-secondary">
               {GRAPH_TYPES.map((gt) => {
