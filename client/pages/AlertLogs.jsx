@@ -7,6 +7,8 @@ import {
   RefreshCw,
   Database,
   AlertTriangle,
+  Download,
+  FileText,
 } from "lucide-react";
 import {
   db,
@@ -81,7 +83,7 @@ const cellColor = (s) =>
 
 // Truncates to exactly 2 decimal places WITHOUT rounding
 const fmt = (v, unit) =>
-  v !== null && v !== undefined ? `${(Math.floor(Number(v) * 100) / 100).toFixed(2)} ${unit}` : "—";
+  v !== null && v !== undefined ? `${(Math.floor(Number(v) * 100) / 100).toFixed(2)} ${unit}` : "\u2014";
 
 const fmtTs = (ts) =>
   ts
@@ -93,7 +95,78 @@ const fmtTs = (ts) =>
         minute: "2-digit",
         second: "2-digit",
       })
-    : "—";
+    : "\u2014";
+
+// ── Export helpers ────────────────────────────────────────────────────────
+function exportLogsCSV(data) {
+  const sensorHeaders = Object.entries(SENSOR_META).map(([, m]) => `${m.label} (${m.unit})`);
+  const headers = ["Timestamp", "Overall Status", ...sensorHeaders];
+  const rows = data.map((r) => [
+    fmtTs(r.timestamp),
+    statusLabel(overallStatus(r)),
+    ...Object.entries(SENSOR_META).map(([k, m]) =>
+      r[k] != null ? (Math.floor(Number(r[k]) * 100) / 100).toFixed(2) : ""
+    ),
+  ]);
+  const csv = [headers, ...rows]
+    .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `bantay-dagat-alert-logs-${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportLogsPDF(data) {
+  const sensorMeta = Object.entries(SENSOR_META);
+  const statusColors = { safe: "#16a34a", go_caution: "#d97706", nogo_caution: "#ea580c", danger: "#dc2626" };
+  const sensorRows = sensorMeta.map(([, m]) => `<th>${m.label}<br/><span style="font-weight:normal;font-size:10px">(${m.unit})</span></th>`).join("");
+
+  const bodyRows = data.map((row) => {
+    const overall = overallStatus(row);
+    const color = statusColors[overall] ?? "#666";
+    const cells = sensorMeta.map(([k, m]) => {
+      const s = deriveStatus(k, row[k]);
+      const cellCol = s === "danger" ? "#dc2626" : s === "caution" ? "#d97706" : "#16a34a";
+      const val = row[k] != null ? (Math.floor(Number(row[k]) * 100) / 100).toFixed(2) : "\u2014";
+      return `<td style="color:${cellCol}">${val}</td>`;
+    }).join("");
+    return `<tr>
+      <td style="font-size:11px;white-space:nowrap">${fmtTs(row.timestamp)}</td>
+      <td style="color:${color};font-weight:bold;white-space:nowrap">${statusLabel(overall)}</td>
+      ${cells}
+    </tr>`;
+  }).join("");
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+  <title>Bantay Dagat – Alert Logs</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 24px; color: #1a1a2e; }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    p.meta { font-size: 12px; color: #666; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th { background: #f0f4f8; padding: 8px 10px; text-align: left; border: 1px solid #cdd5e0; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+    td { padding: 6px 10px; border: 1px solid #e2e8f0; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    @media print { body { padding: 0; } }
+  </style></head><body>
+  <h1>Bantay Dagat – Alert Logs</h1>
+  <p class="meta">Exported: ${new Date().toLocaleString("en-PH")} &nbsp;·&nbsp; ${data.length} readings shown</p>
+  <table>
+    <thead><tr><th>Timestamp</th><th>Overall Status</th>${sensorRows}</tr></thead>
+    <tbody>${bodyRows}</tbody>
+  </table>
+  </body></html>`;
+
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 400);
+}
 
 export default function AlertLogs() {
   const [readings, setReadings] = useState([]);
@@ -171,9 +244,31 @@ export default function AlertLogs() {
           <h2 className="text-2xl font-header font-bold text-foreground">
             Alert Logs
           </h2>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/40 px-3 py-1.5 rounded-full">
-            <Database className="w-3 h-3" />
-            {readings.length} readings
+          <div className="flex items-center gap-3">
+            {sorted.length > 0 && (
+              <>
+                <button
+                  onClick={() => exportLogsCSV(sorted)}
+                  title="Export visible data as CSV"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-safe/10 text-safe border border-safe/30 hover:bg-safe/20 transition-all"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  CSV
+                </button>
+                <button
+                  onClick={() => exportLogsPDF(sorted)}
+                  title="Export visible data as PDF"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 transition-all"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  PDF
+                </button>
+              </>
+            )}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/40 px-3 py-1.5 rounded-full">
+              <Database className="w-3 h-3" />
+              {readings.length} readings
+            </div>
           </div>
         </div>
 
