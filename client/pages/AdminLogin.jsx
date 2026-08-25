@@ -332,7 +332,7 @@ export default function AdminLogin() {
                     setFailCount(0);
                     setLockedUntil(null);
                   }}
-                  autoComplete="username"
+                  autoComplete="off"
                   placeholder="admin@gmail.com"
                   disabled={isLoading}
                   className="w-full px-3.5 py-2 rounded-lg border border-slate-700 bg-slate-800/80 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors disabled:opacity-60 font-medium"
