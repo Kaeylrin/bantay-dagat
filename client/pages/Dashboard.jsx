@@ -702,7 +702,7 @@ export default function Dashboard() {
                         GO: SAFE TO RELEASE
                       </p>
                       <p className="text-xs text-[#7c7366] mt-0.5">
-                        All 5 environmental parameters are within their{" "}
+                        All 3 water quality parameters are within their{" "}
                         <strong>Safe Ranges</strong>.
                       </p>
                     </div>
@@ -715,7 +715,7 @@ export default function Dashboard() {
                       </p>
                       <p className="text-xs text-[#7c7366] mt-0.5">
                         Exactly <strong>1 parameter</strong> is within its
-                        Caution Range, and the other 4 are Safe.
+                        Caution Range, and the other 2 are Safe.
                       </p>
                     </div>
                   </div>
