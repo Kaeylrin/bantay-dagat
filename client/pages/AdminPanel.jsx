@@ -177,10 +177,10 @@ function RangerItem({ ranger }) {
   };
 
   return (
-    <li className="p-3 rounded-lg border border-secondary hover:bg-secondary/20 transition-colors">
+    <li className="p-3.5 rounded-lg border border-[#ddd4c4] bg-[#f5f5f4] hover:bg-[#ebe4d4]/50 transition-colors">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+          <div className="w-9 h-9 rounded-full bg-[#1e3a8a] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
             {(ranger.displayName || ranger.email).charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
@@ -195,12 +195,12 @@ function RangerItem({ ranger }) {
                     if (e.key === "Escape") setEditing(false);
                   }}
                   autoFocus
-                  className="px-2 py-0.5 rounded border border-primary bg-background text-foreground text-sm w-40 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="px-2 py-0.5 rounded border border-[#1e3a8a] bg-white text-[#1a1714] text-xs w-40 focus:outline-none"
                 />
                 <button
                   onClick={handleSaveName}
                   disabled={busy}
-                  className="p-0.5 text-safe hover:text-safe/80"
+                  className="p-0.5 text-[#15803d] hover:text-[#15803d]/80"
                   title="Save"
                 >
                   <Check className="w-3.5 h-3.5" />
@@ -210,22 +210,22 @@ function RangerItem({ ranger }) {
                     setEditing(false);
                     setEditName(ranger.displayName || "");
                   }}
-                  className="p-0.5 text-muted-foreground hover:text-foreground"
+                  className="p-0.5 text-[#7c7366] hover:text-[#1a1714]"
                   title="Cancel"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
-              <p className="text-sm font-medium text-foreground truncate">
+              <p className="text-xs font-bold text-[#1a1714] truncate">
                 {ranger.displayName || "—"}
               </p>
             )}
-            <p className="text-xs text-muted-foreground truncate">
+            <p className="text-[11px] text-[#7c7366] font-medium truncate">
               {ranger.email}
             </p>
-            <p className="text-xs text-muted-foreground">
-              Added{" "}
+            <p className="text-[10px] text-[#a8a29e]">
+              Created:{" "}
               {ranger.createdAt
                 ? new Date(ranger.createdAt).toLocaleDateString("en-PH")
                 : "—"}
@@ -234,7 +234,11 @@ function RangerItem({ ranger }) {
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <span
-            className={`text-xs px-2 py-0.5 rounded-full font-bold ${ranger.isActive ? "bg-safe/20 text-safe" : "bg-danger/20 text-danger"}`}
+            className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wide ${
+              ranger.isActive
+                ? "bg-[#15803d]/10 text-[#15803d]"
+                : "bg-[#9a3412]/10 text-[#9a3412]"
+            }`}
           >
             {ranger.isActive ? "Active" : "Disabled"}
           </span>
@@ -434,17 +438,22 @@ export default function AdminPanel() {
 
   return (
     <Layout>
-      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl">
-        <h2 className="text-xl sm:text-2xl font-header font-bold text-foreground mb-6 sm:mb-8">
-          Admin Panel — Ranger Accounts
-        </h2>
+      <div className="space-y-5 max-w-5xl">
+        <div className="mb-6">
+          <h2 className="text-xl sm:text-2xl font-header font-bold text-[#1a1714] tracking-tight">
+            Administrative Command & Account Management
+          </h2>
+          <p className="text-xs text-[#7c7366] mt-1">
+            Provision staff ranger accounts, reset security credentials, and manage system access permissions.
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
           {/* ── Create Account ── */}
-          <div className="bg-white rounded-xl border border-secondary shadow-sm p-6">
-            <h3 className="text-lg font-header font-bold text-foreground mb-5 flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-primary" />
-              Create Ranger Account
+          <div className="bg-[#fffaf2] rounded-xl border border-[#ddd4c4] shadow-sm p-6">
+            <h3 className="text-base font-header font-bold text-[#1a1714] mb-5 flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-[#1e3a8a]" />
+              Provision Ranger Account
             </h3>
 
             <form
@@ -453,7 +462,7 @@ export default function AdminPanel() {
               autoComplete="off"
             >
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
+                <label className="block text-xs font-semibold text-[#1a1714] uppercase tracking-wider mb-1">
                   Full Name
                 </label>
                 <input
@@ -462,12 +471,12 @@ export default function AdminPanel() {
                   onChange={field("displayName")}
                   placeholder="Juan dela Cruz"
                   autoComplete="off"
-                  className="w-full px-3 py-2 rounded-lg border border-secondary bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 rounded-lg border border-[#ddd4c4] bg-[#f5f5f4] text-[#1a1714] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
+                <label className="block text-xs font-semibold text-[#1a1714] uppercase tracking-wider mb-1">
                   Gmail Address
                 </label>
                 <input
@@ -476,23 +485,22 @@ export default function AdminPanel() {
                   onChange={field("email")}
                   placeholder="ranger.name@gmail.com"
                   autoComplete="new-email"
-                  className={`w-full px-3 py-2 rounded-lg border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+                  className={`w-full px-3 py-2 rounded-lg border bg-[#f5f5f4] text-[#1a1714] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] ${
                     form.email &&
                     !form.email.trim().toLowerCase().endsWith("@gmail.com") &&
                     form.email.includes("@")
-                      ? "border-danger"
-                      : "border-secondary"
+                      ? "border-[#9a3412]"
+                      : "border-[#ddd4c4]"
                   }`}
                 />
-                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-[#7c7366] mt-1 flex items-center gap-1">
                   <Mail className="w-3 h-3" />
-                  Gmail accounts only — required for password reset
-                  functionality.
+                  Gmail accounts only — required for password reset delivery.
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
+                <label className="block text-xs font-semibold text-[#1a1714] uppercase tracking-wider mb-1">
                   Password
                 </label>
                 <div className="relative">
@@ -502,12 +510,12 @@ export default function AdminPanel() {
                     onChange={field("password")}
                     placeholder="••••••••"
                     autoComplete="new-password"
-                    className="w-full px-3 py-2 pr-9 rounded-lg border border-secondary bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 pr-9 rounded-lg border border-[#ddd4c4] bg-[#f5f5f4] text-[#1a1714] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPw((v) => !v)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#7c7366]"
                     tabIndex={-1}
                   >
                     {showPw ? (
@@ -520,15 +528,15 @@ export default function AdminPanel() {
 
                 {form.password && strength && (
                   <div className="mt-2">
-                    <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-[#ddd4c4] rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${strength.color}`}
                         style={{ width: strength.width }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-[11px] text-[#7c7366] mt-1">
                       Strength:{" "}
-                      <span className="font-semibold">{strength.label}</span>
+                      <span className="font-semibold text-[#1a1714]">{strength.label}</span>
                     </p>
                   </div>
                 )}
@@ -540,7 +548,7 @@ export default function AdminPanel() {
                       return (
                         <li
                           key={r.id}
-                          className={`flex items-center gap-1.5 text-xs ${ok ? "text-safe" : "text-muted-foreground"}`}
+                          className={`flex items-center gap-1.5 text-[11px] ${ok ? "text-[#15803d]" : "text-[#7c7366]"}`}
                         >
                           {ok ? (
                             <CheckCircle2 className="w-3 h-3" />
@@ -556,7 +564,7 @@ export default function AdminPanel() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
+                <label className="block text-xs font-semibold text-[#1a1714] uppercase tracking-wider mb-1">
                   Confirm Password
                 </label>
                 <input
@@ -565,26 +573,26 @@ export default function AdminPanel() {
                   onChange={field("confirm")}
                   placeholder="••••••••"
                   autoComplete="new-password"
-                  className={`w-full px-3 py-2 rounded-lg border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+                  className={`w-full px-3 py-2 rounded-lg border bg-[#f5f5f4] text-[#1a1714] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] ${
                     form.confirm && form.confirm !== form.password
-                      ? "border-danger"
-                      : "border-secondary"
+                      ? "border-[#9a3412]"
+                      : "border-[#ddd4c4]"
                   }`}
                 />
                 {form.confirm && form.confirm !== form.password && (
-                  <p className="text-xs text-danger mt-1">
+                  <p className="text-[11px] text-[#9a3412] mt-1">
                     Passwords do not match.
                   </p>
                 )}
               </div>
 
               {formError && (
-                <div className="bg-danger/10 border border-danger/30 rounded-lg p-3 text-sm text-danger">
+                <div className="bg-[#9a3412]/10 border border-[#9a3412]/30 rounded-lg p-3 text-xs text-[#9a3412]">
                   {formError}
                 </div>
               )}
               {formSuccess && (
-                <div className="bg-safe/10 border border-safe/30 rounded-lg p-3 text-sm text-safe flex items-center gap-2">
+                <div className="bg-[#15803d]/10 border border-[#15803d]/30 rounded-lg p-3 text-xs text-[#15803d] flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   {formSuccess}
                 </div>
@@ -593,11 +601,11 @@ export default function AdminPanel() {
               <button
                 type="submit"
                 disabled={creating}
-                className="w-full bg-primary text-white font-medium py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm mt-1"
+                className="w-full bg-[#1e3a8a] text-white font-semibold text-xs py-2.5 rounded-lg hover:bg-[#1e3a8a]/90 transition-colors disabled:opacity-50 mt-1 shadow-sm"
               >
                 {creating ? (
                   <span className="flex items-center justify-center gap-2">
-                    <RefreshCw className="w-4 h-4 animate-spin" /> Creating…
+                    <RefreshCw className="w-4 h-4 animate-spin" /> Provisioning Account…
                   </span>
                 ) : (
                   "Create Ranger Account"
@@ -607,28 +615,25 @@ export default function AdminPanel() {
           </div>
 
           {/* ── Rangers List ── */}
-          <div className="bg-white rounded-xl border border-secondary shadow-sm p-6">
-            <h3 className="text-lg font-header font-bold text-foreground mb-5 flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" />
-              Rangers ({rangers.length})
+          <div className="bg-[#fffaf2] rounded-xl border border-[#ddd4c4] shadow-sm p-6">
+            <h3 className="text-base font-header font-bold text-[#1a1714] mb-5 flex items-center gap-2">
+              <Users className="w-4 h-4 text-[#1e3a8a]" />
+              Active Staff Rangers ({rangers.length})
             </h3>
 
             {listError && (
-              <div className="bg-danger/10 border border-danger/30 rounded-lg p-3 text-sm text-danger mb-4">
+              <div className="bg-[#9a3412]/10 border border-[#9a3412]/30 rounded-lg p-3 text-xs text-[#9a3412] mb-4">
                 Failed to load rangers: {listError}
-                <p className="text-xs mt-1 opacity-80">
-                  Make sure Firebase security rules are deployed.
-                </p>
               </div>
             )}
 
             {loadingList ? (
-              <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
-                <RefreshCw className="w-4 h-4 animate-spin" /> Loading…
+              <div className="flex items-center gap-2 text-[#7c7366] text-xs py-4">
+                <RefreshCw className="w-4 h-4 animate-spin text-[#1e3a8a]" /> Loading staff roster…
               </div>
             ) : rangers.length === 0 && !listError ? (
-              <p className="text-muted-foreground text-sm py-4">
-                No ranger accounts yet.
+              <p className="text-[#7c7366] text-xs py-4">
+                No ranger accounts configured yet.
               </p>
             ) : (
               <ul className="space-y-3">
@@ -640,19 +645,19 @@ export default function AdminPanel() {
 
             {/* Actions legend */}
             {rangers.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-secondary">
-                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              <div className="mt-4 pt-3 border-t border-[#ddd4c4]">
+                <div className="flex flex-wrap gap-3 text-[10px] text-[#7c7366] font-medium">
                   <span className="flex items-center gap-1">
-                    <Pencil className="w-3 h-3" /> Edit Name
+                    <Pencil className="w-3 h-3 text-[#1e3a8a]" /> Edit Name
                   </span>
                   <span className="flex items-center gap-1">
-                    <KeyRound className="w-3 h-3" /> Reset Password
+                    <KeyRound className="w-3 h-3 text-[#1e3a8a]" /> Reset Password
                   </span>
                   <span className="flex items-center gap-1">
-                    <ShieldOff className="w-3 h-3" /> Toggle Active
+                    <ShieldOff className="w-3 h-3 text-[#b45309]" /> Toggle Active
                   </span>
                   <span className="flex items-center gap-1">
-                    <Trash2 className="w-3 h-3" /> Delete
+                    <Trash2 className="w-3 h-3 text-[#9a3412]" /> Delete Account
                   </span>
                 </div>
               </div>

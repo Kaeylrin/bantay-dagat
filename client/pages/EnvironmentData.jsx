@@ -89,7 +89,7 @@ function WeatherPanel() {
     [0, 1, 2, 3].includes(data.current.weather_code);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3.5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -117,7 +117,7 @@ function WeatherPanel() {
 
       {error && (
         <div className="bg-danger/10 border border-danger/30 rounded-lg p-4 text-danger text-sm">
-          ⚠ Failed to fetch weather data: {error}
+          Failed to fetch weather data: {error}
         </div>
       )}
 
@@ -234,7 +234,7 @@ function WeatherPanel() {
                     {data.daily.temperature_2m_min[i]}°
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    🌧 {data.daily.precipitation_sum[i]} mm
+                    {data.daily.precipitation_sum[i]} mm
                   </p>
                 </div>
               ))}
@@ -253,44 +253,20 @@ function WeatherPanel() {
 const TABS = [{ id: "weather", label: "Weather", icon: Cloud }];
 
 export default function EnvironmentData() {
-  const [activeTab, setActiveTab] = useState("weather");
-
   return (
     <Layout userEmail="staff@sanctuary.org">
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="mb-6">
-          <h2 className="text-2xl font-header font-bold text-foreground mb-1">
+      <div className="space-y-4">
+        <div className="mb-2">
+          <h2 className="text-xl font-header font-bold text-foreground tracking-tight">
             Environmental Monitoring
           </h2>
-          <p className="text-sm text-muted-foreground">
-            Real-time environmental data for sea turtle pre-release safety
-            assessment.
+          <p className="text-xs text-muted-foreground">
+            Real-time environmental data for sea turtle pre-release safety assessment.
           </p>
         </div>
 
-        <div className="flex gap-2 mb-8 bg-secondary/30 rounded-xl p-2 border border-secondary">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all text-sm font-medium ${
-                  active
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-foreground hover:bg-secondary"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
         <div className="bg-background rounded-xl">
-          {activeTab === "weather" && <WeatherPanel />}
+          <WeatherPanel />
         </div>
       </div>
     </Layout>

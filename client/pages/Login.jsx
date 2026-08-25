@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, ShieldAlert, Lock, Clock } from "lucide-react";
+import { Eye, EyeOff, ShieldAlert, Lock, Clock, Radio } from "lucide-react";
 import {
   db,
   auth,
@@ -228,36 +228,37 @@ export default function Login() {
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <img
             src="/bantay-dagat.png"
             alt="BantayDagat Logo"
-            className="w-24 h-24 mx-auto mb-4 drop-shadow-md object-contain"
+            className="w-20 h-20 mx-auto mb-3 object-contain drop-shadow-sm"
           />
-          <h1 className="text-3xl font-header font-bold text-foreground mb-1">
+          <h1 className="text-2xl font-header font-bold text-[#1a1714] tracking-tight mb-1">
             BantayDagat
           </h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-xs text-[#7c7366] font-medium mb-2">
             IoT-Based Water Quality Monitoring
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Ranger / Staff Login
-          </p>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#15803d]/10 text-[#15803d] border border-[#15803d]/30">
+            <Radio className="w-3.5 h-3.5 text-[#15803d]" />
+            Field Operational Telemetry Access
+          </span>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-secondary p-8">
-          <h2 className="text-xl font-header font-bold text-foreground mb-6 flex items-center gap-2">
-            <Lock className="w-5 h-5 text-primary" />
-            Ranger Login
+        <div className="bg-[#fffaf2] rounded-xl shadow-sm border border-[#ddd4c4] p-6 sm:p-8">
+          <h2 className="text-base font-header font-bold text-[#1a1714] mb-6 flex items-center gap-2">
+            <Radio className="w-4 h-4 text-[#1e3a8a]" />
+            Ranger Staff Sign In
           </h2>
 
           {/* Lockout banner */}
           {isLocked && (
-            <div className="mb-4 bg-danger/10 border border-danger/30 rounded-lg p-3 flex items-start gap-2">
-              <Clock className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+            <div className="mb-4 bg-[#9a3412]/10 border border-[#9a3412]/30 rounded-lg p-3 flex items-start gap-2">
+              <Clock className="w-4 h-4 text-[#9a3412] shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-bold text-danger">Account Locked</p>
-                <p className="text-xs text-danger/80">
+                <p className="text-xs font-bold text-[#9a3412]">Account Locked</p>
+                <p className="text-xs text-[#9a3412]/80">
                   Too many failed attempts. Try again in{" "}
                   <span className="font-mono font-bold">
                     {formatMs(remaining)}
@@ -276,7 +277,7 @@ export default function Login() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-foreground mb-2"
+                className="block text-xs font-semibold text-[#1a1714] uppercase tracking-wider mb-1.5"
               >
                 Gmail Address
               </label>
@@ -294,14 +295,14 @@ export default function Login() {
                 autoComplete="username"
                 placeholder="ranger@gmail.com"
                 disabled={isLoading}
-                className="w-full px-4 py-2 rounded-lg border border-secondary bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors disabled:opacity-60"
+                className="w-full px-3.5 py-2 rounded-lg border border-[#ddd4c4] bg-[#f5f5f4] text-[#1a1714] placeholder-[#a8a29e] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:border-transparent transition-colors disabled:opacity-60 font-medium"
               />
             </div>
 
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-foreground mb-2"
+                className="block text-xs font-semibold text-[#1a1714] uppercase tracking-wider mb-1.5"
               >
                 Password
               </label>
@@ -314,12 +315,12 @@ export default function Login() {
                   autoComplete="current-password"
                   placeholder="••••••••"
                   disabled={isLoading || isLocked}
-                  className="w-full px-4 py-2 pr-10 rounded-lg border border-secondary bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors disabled:opacity-60"
+                  className="w-full px-3.5 py-2 pr-10 rounded-lg border border-[#ddd4c4] bg-[#f5f5f4] text-[#1a1714] placeholder-[#a8a29e] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:border-transparent transition-colors disabled:opacity-60 font-medium"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7c7366] hover:text-[#1a1714]"
                   tabIndex={-1}
                 >
                   {showPassword ? (
@@ -332,23 +333,23 @@ export default function Login() {
             </div>
 
             {error && (
-              <div className="bg-danger/10 border border-danger/30 rounded-lg p-3">
-                <p className="text-sm text-danger">{error}</p>
+              <div className="bg-[#9a3412]/10 border border-[#9a3412]/30 rounded-lg p-3">
+                <p className="text-xs text-[#9a3412]">{error}</p>
               </div>
             )}
 
-            {/* Attempt indicator — only shown after a failed attempt on this visit */}
+            {/* Attempt indicator */}
             {hasAttempted && failCount > 0 && !isLocked && (
               <div className="flex gap-1 items-center">
                 {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
                   <div
                     key={i}
                     className={`h-1 flex-1 rounded-full transition-colors ${
-                      i < failCount ? "bg-danger" : "bg-secondary"
+                      i < failCount ? "bg-[#9a3412]" : "bg-[#ddd4c4]"
                     }`}
                   />
                 ))}
-                <span className="text-xs text-muted-foreground ml-1">
+                <span className="text-[10px] text-[#7c7366] ml-1">
                   {MAX_ATTEMPTS - failCount} left
                 </span>
               </div>
@@ -357,9 +358,9 @@ export default function Login() {
             <button
               type="submit"
               disabled={isLoading || isLocked}
-              className="w-full bg-primary text-white font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+              className="w-full bg-[#1e3a8a] text-white font-semibold text-xs py-2.5 rounded-lg hover:bg-[#1e3a8a]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-sm"
             >
-              {isLoading ? "Logging in…" : "Login"}
+              {isLoading ? "Authenticating Ranger…" : "Sign In as Ranger"}
             </button>
           </form>
         </div>
@@ -367,11 +368,11 @@ export default function Login() {
         <div className="text-center mt-6 space-y-2">
           <Link
             to="/admin-login"
-            className="block text-xs text-muted-foreground hover:text-primary transition-colors"
+            className="block text-xs font-semibold text-[#7c7366] hover:text-[#1e3a8a] transition-colors"
           >
-            Administrator Login →
+            Switch to Administrator Console Login →
           </Link>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[11px] text-[#a8a29e]">
             Sanctuary Marine Conservation System &mdash; Authorised Access Only
           </p>
         </div>

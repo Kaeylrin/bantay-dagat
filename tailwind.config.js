@@ -11,8 +11,8 @@ export default {
       },
     },
     fontFamily: {
-      header: ["Space Grotesk", "sans-serif"],
-      body: ["DM Sans", "sans-serif"],
+      header: ["IBM Plex Sans", "Space Grotesk", "sans-serif"],
+      body: ["IBM Plex Sans", "sans-serif"],
     },
     extend: {
       colors: {
