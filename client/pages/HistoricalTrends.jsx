@@ -267,45 +267,58 @@ export default function HistoricalTrends() {
     };
   }, [filteredHistory]);
 
-  const chartStyle = {
-    contentStyle: {
-      backgroundColor: "white",
-      border: "1px solid hsl(var(--secondary))",
-      borderRadius: "8px",
-    },
+  // High-contrast editorial tooltip
+  const CustomTooltip = ({ active, payload, label, unit }) => {
+    if (active && payload && payload.length) {
+      const val = payload[0].value;
+      const formattedVal =
+        val !== null && val !== undefined
+          ? `${(Math.floor(Number(val) * 100) / 100).toFixed(2)} ${unit || ""}`
+          : "—";
+      return (
+        <div className="bg-[#1a1714] text-[#fffaf2] p-2.5 rounded-lg text-xs shadow-xl border border-[#38332e]">
+          <p className="font-semibold text-[#a8a29e] mb-1 text-[11px] font-mono">{label}</p>
+          <p className="font-bold text-white text-sm font-mono tracking-tight">
+            Value: <span className="text-[#f5f0eb]">{formattedVal}</span>
+          </p>
+        </div>
+      );
+    }
+    return null;
   };
 
   // Helper renderer for dynamic graph types
-  const renderChartComponent = (sensorKey, color, domain) => {
+  const renderChartComponent = (sensorKey, color, domain, unit) => {
     const threshold = THRESHOLDS[sensorKey];
     const yDomain = domain || [0, "auto"];
+    const strokeColor = "#1e3a8a";
 
     return (
       <ResponsiveContainer width="100%" height={250}>
         {graphType === "line" && (
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--secondary))" />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-            <YAxis domain={yDomain} />
-            <Tooltip {...chartStyle} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#ebe4d4" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#7c7366" }} interval="preserveStartEnd" />
+            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#7c7366" }} />
+            <Tooltip content={<CustomTooltip unit={unit} />} />
             {threshold.safeMin !== undefined && (
               <ReferenceLine
                 y={threshold.safeMin}
-                stroke="hsl(var(--safe))"
-                strokeDasharray="5 5"
-                label={{ value: "Min Safe", position: "right", fontSize: 11 }}
+                stroke="#15803d"
+                strokeDasharray="5 4"
+                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "#15803d" }}
               />
             )}
             <ReferenceLine
               y={threshold.safeMax}
-              stroke="hsl(var(--safe))"
-              strokeDasharray="5 5"
-              label={{ value: "Max Safe", position: "right", fontSize: 11 }}
+              stroke="#9a3412"
+              strokeDasharray="5 4"
+              label={{ value: "Cap Limit", position: "right", fontSize: 10, fill: "#9a3412" }}
             />
             <Line
               type="monotone"
               dataKey={sensorKey}
-              stroke={color}
+              stroke={strokeColor}
               dot={false}
               strokeWidth={2}
               connectNulls
@@ -315,56 +328,63 @@ export default function HistoricalTrends() {
 
         {graphType === "area" && (
           <AreaChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--secondary))" />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-            <YAxis domain={yDomain} />
-            <Tooltip {...chartStyle} />
+            <defs>
+              <linearGradient id={`metFill-${sensorKey}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#1e3a8a" stopOpacity={0.28} />
+                <stop offset="100%" stopColor="#1e3a8a" stopOpacity={0.0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#ebe4d4" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#7c7366" }} interval="preserveStartEnd" />
+            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#7c7366" }} />
+            <Tooltip content={<CustomTooltip unit={unit} />} />
             {threshold.safeMin !== undefined && (
               <ReferenceLine
                 y={threshold.safeMin}
-                stroke="hsl(var(--safe))"
-                strokeDasharray="5 5"
-                label={{ value: "Min Safe", position: "right", fontSize: 11 }}
+                stroke="#15803d"
+                strokeDasharray="5 4"
+                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "#15803d" }}
               />
             )}
             <ReferenceLine
               y={threshold.safeMax}
-              stroke="hsl(var(--safe))"
-              strokeDasharray="5 5"
-              label={{ value: "Max Safe", position: "right", fontSize: 11 }}
+              stroke="#9a3412"
+              strokeDasharray="5 4"
+              label={{ value: "Cap Limit", position: "right", fontSize: 10, fill: "#9a3412" }}
             />
             <Area
               type="monotone"
               dataKey={sensorKey}
-              stroke={color}
-              fill={color}
-              fillOpacity={0.2}
+              stroke={strokeColor}
+              fill={`url(#metFill-${sensorKey})`}
+              fillOpacity={1}
               connectNulls
+              strokeWidth={2}
             />
           </AreaChart>
         )}
 
         {graphType === "bar" && (
           <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--secondary))" />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-            <YAxis domain={yDomain} />
-            <Tooltip {...chartStyle} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#ebe4d4" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#7c7366" }} interval="preserveStartEnd" />
+            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#7c7366" }} />
+            <Tooltip content={<CustomTooltip unit={unit} />} />
             {threshold.safeMin !== undefined && (
               <ReferenceLine
                 y={threshold.safeMin}
-                stroke="hsl(var(--safe))"
-                strokeDasharray="5 5"
-                label={{ value: "Min Safe", position: "right", fontSize: 11 }}
+                stroke="#15803d"
+                strokeDasharray="5 4"
+                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "#15803d" }}
               />
             )}
             <ReferenceLine
               y={threshold.safeMax}
-              stroke="hsl(var(--safe))"
-              strokeDasharray="5 5"
-              label={{ value: "Max Safe", position: "right", fontSize: 11 }}
+              stroke="#9a3412"
+              strokeDasharray="5 4"
+              label={{ value: "Cap Limit", position: "right", fontSize: 10, fill: "#9a3412" }}
             />
-            <Bar dataKey={sensorKey} fill={color} radius={[4, 4, 0, 0]} />
+            <Bar dataKey={sensorKey} fill="#1e3a8a" radius={[4, 4, 0, 0]} />
           </BarChart>
         )}
       </ResponsiveContainer>
@@ -373,7 +393,7 @@ export default function HistoricalTrends() {
 
   return (
     <Layout>
-      <div className="p-4 sm:p-6 lg:p-8">
+      <div className="space-y-5">
         {/* ── Header & Filters ─────────────────────────────────────────────────── */}
         <div className="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
@@ -660,43 +680,43 @@ export default function HistoricalTrends() {
         {hasData && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Air Temperature */}
-            <div className="bg-white rounded-xl p-6 border border-secondary shadow-sm">
-              <h3 className="text-lg font-header font-bold text-foreground mb-4">
+            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm">
+              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
                 Air Temperature (°C)
               </h3>
-              {renderChartComponent("air_temperature", "hsl(var(--caution))", [0, 50])}
+              {renderChartComponent("air_temperature", "hsl(var(--caution))", [0, 50], "°C")}
             </div>
 
             {/* Water Temperature */}
-            <div className="bg-white rounded-xl p-6 border border-secondary shadow-sm">
-              <h3 className="text-lg font-header font-bold text-foreground mb-4">
+            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm">
+              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
                 Water Temperature (°C)
               </h3>
-              {renderChartComponent("temperature", "hsl(var(--primary))", [0, 40])}
+              {renderChartComponent("temperature", "hsl(var(--primary))", [0, 40], "°C")}
             </div>
 
             {/* Humidity */}
-            <div className="bg-white rounded-xl p-6 border border-secondary shadow-sm">
-              <h3 className="text-lg font-header font-bold text-foreground mb-4">
+            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm">
+              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
                 Humidity (%)
               </h3>
-              {renderChartComponent("humidity", "hsl(var(--accent))", [0, 100])}
+              {renderChartComponent("humidity", "hsl(var(--accent))", [0, 100], "%")}
             </div>
 
             {/* pH */}
-            <div className="bg-white rounded-xl p-6 border border-secondary shadow-sm">
-              <h3 className="text-lg font-header font-bold text-foreground mb-4">
+            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm">
+              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
                 pH Level
               </h3>
-              {renderChartComponent("ph", "hsl(var(--caution))", [6, 9])}
+              {renderChartComponent("ph", "hsl(var(--caution))", [6, 9], "pH")}
             </div>
 
             {/* Turbidity */}
-            <div className="bg-white rounded-xl p-6 border border-secondary shadow-sm lg:col-span-2">
-              <h3 className="text-lg font-header font-bold text-foreground mb-4">
+            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm lg:col-span-2">
+              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
                 Turbidity (NTU)
               </h3>
-              {renderChartComponent("turbidity", "hsl(var(--danger))", [0, 60])}
+              {renderChartComponent("turbidity", "hsl(var(--danger))", [0, 60], "NTU")}
             </div>
           </div>
         )}
