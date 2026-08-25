@@ -49,8 +49,10 @@ function deriveStatus(key, value) {
 }
 
 function overallStatus(reading) {
-  const keys = Object.keys(SENSOR_META);
-  const statuses = keys.map((k) => deriveStatus(k, reading[k]));
+  // Only evaluate water quality parameters for the overall release status
+  const waterKeys = ["temperature", "ph", "turbidity"];
+  const statuses = waterKeys.map((k) => deriveStatus(k, reading[k]));
+  
   const dangerCount = statuses.filter((s) => s === "danger").length;
   const cautionCount = statuses.filter((s) => s === "caution").length;
   const unknownCount = statuses.filter((s) => s === "unknown").length;
@@ -58,7 +60,7 @@ function overallStatus(reading) {
   if (dangerCount >= 1) return "danger";
   if (cautionCount >= 2) return "nogo_caution";
   if (cautionCount === 1) return "go_caution";
-  if (unknownCount === keys.length) return "unknown";
+  if (unknownCount === waterKeys.length) return "unknown";
   return "safe";
 }
 

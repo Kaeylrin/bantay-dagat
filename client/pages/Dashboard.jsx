@@ -47,6 +47,7 @@ const SENSOR_CONFIG = [
     key: "air_temperature",
     name: "Air Temp",
     unit: "°C",
+    type: "environment",
     icon: Wind,
     threshold: { safe: [25, 32], caution: [22, 35] },
     description:
@@ -56,6 +57,7 @@ const SENSOR_CONFIG = [
     key: "temperature",
     name: "Water Temp",
     unit: "°C",
+    type: "water",
     icon: Thermometer,
     threshold: { safe: [26, 31], caution: [24, 33] },
     description:
@@ -65,6 +67,7 @@ const SENSOR_CONFIG = [
     key: "humidity",
     name: "Humidity",
     unit: "%",
+    type: "environment",
     icon: Droplets,
     threshold: { safe: [65, 85], caution: [55, 90] },
     description:
@@ -74,6 +77,7 @@ const SENSOR_CONFIG = [
     key: "ph",
     name: "pH Level",
     unit: "pH",
+    type: "water",
     icon: TestTube,
     threshold: { safe: [7.8, 8.3], caution: [7.5, 8.5] },
     description:
@@ -83,6 +87,7 @@ const SENSOR_CONFIG = [
     key: "turbidity",
     name: "Turbidity",
     unit: "NTU",
+    type: "water",
     icon: Eye,
     threshold: { safe: [0, 25], caution: [0, 50] },
     description:
@@ -139,22 +144,22 @@ function generateRecommendation(sensors, trends, releaseStatus) {
 
   if (releaseStatus === "go") {
     if (worsening.length === 0)
-      return "All parameters are within safe thresholds and holding steady. Conditions are currently optimal — pawikan release is recommended.";
-    return `Safe conditions confirmed, but ${worsening.map((s) => s.name).join(", ")} ${worsening.length === 1 ? "is" : "are"} drifting toward caution levels. Consider initiating release soon before conditions shift.`;
+      return "All water quality parameters are within safe thresholds and holding steady. Conditions are currently optimal — pawikan release is recommended.";
+    return `Water conditions are safe, but ${worsening.map((s) => s.name).join(", ")} ${worsening.length === 1 ? "is" : "are"} drifting toward caution levels. Consider initiating release soon before water conditions shift.`;
   }
   if (releaseStatus === "go_caution") {
     if (improving.length > 0)
-      return `One parameter is in caution range, but ${improving.map((s) => s.name).join(", ")} ${improving.length === 1 ? "is" : "are"} trending back toward safe levels. A brief wait may improve conditions before release.`;
-    return "Release is permissible but proceed with caution. One parameter is near its caution boundary — ensure a ranger is on-site for monitoring during and after release.";
+      return `One water parameter is in caution range, but ${improving.map((s) => s.name).join(", ")} ${improving.length === 1 ? "is" : "are"} trending back toward safe levels. A brief wait may improve conditions before release.`;
+    return "Release is permissible but proceed with caution. One water parameter is near its caution boundary — ensure a ranger is on-site for monitoring during and after release.";
   }
   if (releaseStatus === "nogo_caution") {
     if (improving.length >= 2)
-      return "Multiple parameters are outside safe thresholds but trending toward improvement. Hold release and reassess after the next 2–3 readings.";
-    return "Two or more parameters are in suboptimal ranges. Postpone release and continue monitoring. Notify the senior ranger if conditions do not improve within the hour.";
+      return "Multiple water parameters are outside safe thresholds but trending toward improvement. Hold release and reassess after the next 2–3 readings.";
+    return "Two or more water parameters are in suboptimal ranges. Postpone release and continue monitoring. Notify the senior ranger if water conditions do not improve within the hour.";
   }
   if (releaseStatus === "danger")
-    return "Critical sensor values detected. Release is strictly prohibited. Ensure the holding facility remains stable and immediately alert senior staff.";
-  return "Awaiting sufficient sensor data to generate a release recommendation. Ensure the Arduino is transmitting readings to Firebase.";
+    return "Critical water quality values detected. Release is strictly prohibited. Ensure the holding facility remains stable and immediately alert senior staff.";
+  return "Awaiting sufficient water telemetry data to generate a release recommendation.";
 }
 
 const statusCard = (s) =>
@@ -290,8 +295,10 @@ export default function Dashboard() {
     return { ...cfg, value, status };
   });
 
-  const cautionCount = sensors.filter((s) => s.status === "caution").length;
-  const dangerCount = sensors.filter((s) => s.status === "danger").length;
+  // Only water testing sensors dictate GO / NO-GO status
+  const waterSensors = sensors.filter((s) => s.type === "water");
+  const cautionCount = waterSensors.filter((s) => s.status === "caution").length;
+  const dangerCount = waterSensors.filter((s) => s.status === "danger").length;
 
   let releaseStatus = "unknown";
   if (latestReading) {
@@ -342,7 +349,7 @@ export default function Dashboard() {
           bgClass: "bg-safe/10 border-safe/40",
           textClass: "text-safe",
           title: "GO: SAFE TO RELEASE",
-          desc: "All environmental parameters are within safe thresholds for sea turtle release.",
+          desc: "All water quality parameters are within safe thresholds for sea turtle release.",
           icon: CheckCircle2,
         };
       case "go_caution":
@@ -375,6 +382,158 @@ export default function Dashboard() {
   };
 
   const banner = getBannerDetails(releaseStatus);
+
+  const envSensors = sensors.filter((s) => s.type === "environment");
+
+  const renderSensorCard = (sensor) => {
+    const Icon = sensor.icon;
+    const sparkData = trendHistory.slice(-20).map((e) => ({
+      time: e.time,
+      value: e[sensor.key],
+    }));
+    const alert = sensorAlertLabel(sensor.status);
+    const isExpanded = expandedSensor === sensor.key;
+
+    // Compute hardware probe health
+    const isDisconnected = connectionState !== "live";
+    const isFaulty =
+      !isDisconnected &&
+      (sensor.value === null ||
+        sensor.value === undefined ||
+        sensor.value === -999);
+    const probeHealthState = isDisconnected
+      ? "DISCONNECTED"
+      : isFaulty
+        ? "FAULTY"
+        : "WORKING";
+
+    return (
+      <div
+        key={sensor.key}
+        className="bg-[#fffaf2] rounded-xl p-4 border border-[#ddd4c4] shadow-sm hover:border-[#1e3a8a]/40 transition-all flex flex-col justify-between"
+      >
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <Icon className="w-4 h-4 text-[#1e3a8a]" />
+              <p className="text-xs text-[#7c7366] font-semibold">
+                {sensor.name}
+              </p>
+            </div>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                sensor.status === "safe"
+                  ? "bg-[#15803d]/10 text-[#15803d]"
+                  : sensor.status === "caution"
+                    ? "bg-[#b45309]/10 text-[#b45309]"
+                    : sensor.status === "danger"
+                      ? "bg-[#9a3412]/10 text-[#9a3412]"
+                      : "bg-secondary text-muted-foreground"
+              }`}
+            >
+              {sensor.status === "unknown"
+                ? "NO DATA"
+                : sensor.status.toUpperCase()}
+            </span>
+          </div>
+
+          {/* Hardware Probe Health Badge */}
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-2">
+            <div className="flex items-center gap-1">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  probeHealthState === "WORKING"
+                    ? "bg-[#15803d]"
+                    : probeHealthState === "FAULTY"
+                      ? "bg-[#b45309]"
+                      : "bg-[#9a3412]"
+                }`}
+              />
+              <span className="text-[10px] font-bold uppercase tracking-wide text-[#7c7366]">
+                {probeHealthState}
+              </span>
+            </div>
+            <button
+              onClick={() =>
+                setExpandedSensor(isExpanded ? null : sensor.key)
+              }
+              className="text-[#a8a29e] hover:text-[#1e3a8a] transition-colors"
+              title="View Habitat Target"
+            >
+              <Info className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Expandable description */}
+          {isExpanded && (
+            <div className="text-[10px] mb-3 leading-relaxed border-l-2 border-[#1e3a8a] pl-2 py-1 bg-[#f5f0eb] rounded-r-lg">
+              <p className="text-[#1a1714] font-medium mb-1">
+                Target: {sensor.threshold.safe[0]}–{sensor.threshold.safe[1]} {sensor.unit}
+              </p>
+              <p className="text-[#7c7366]">
+                {sensor.description}
+              </p>
+            </div>
+          )}
+
+          {/* Big KPI Value */}
+          <div className="my-2 flex items-baseline justify-between">
+            <p className="text-2xl font-mono font-bold tracking-tight text-[#1a1714] tabular-nums">
+              {isFaulty ? "FAULT" : isDisconnected ? "OFFLINE" : truncTo2(sensor.value)}
+            </p>
+            {sensor.type === "water" && (
+              <span className={`text-[10px] font-bold ${alert.cls}`}>
+                {alert.text}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Sparkline */}
+        <div className="h-10 mt-2 -mx-1">
+          {sparkData.some((d) => d.value !== null) ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={sparkData}>
+                <XAxis dataKey="time" hide />
+                <YAxis hide />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#1a1714",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "4px 8px",
+                    fontSize: "11px",
+                  }}
+                  itemStyle={{ color: "#ffffff" }}
+                  labelStyle={{ color: "#a8a29e", fontSize: "10px" }}
+                  formatter={(v) => [
+                    v != null ? `${truncTo2(v)} ${sensor.unit}` : "—",
+                    sensor.name,
+                  ]}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#1e3a8a"
+                  dot={false}
+                  strokeWidth={1.8}
+                  isAnimationActive={false}
+                  connectNulls
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <p className="text-[10px] text-[#a8a29e]">
+                No telemetry history
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Layout>
@@ -492,157 +651,20 @@ export default function Dashboard() {
         <div>
           <div className="mb-3">
             <h3 className="text-base font-header font-bold text-[#1a1714]">
-              Live Sensor Data
+              Water Quality Sensors (Decision Factors)
             </h3>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
-            {sensors.map((sensor) => {
-              const Icon = sensor.icon;
-              const sparkData = trendHistory.slice(-20).map((e) => ({
-                time: e.time,
-                value: e[sensor.key],
-              }));
-              const alert = sensorAlertLabel(sensor.status);
-              const isExpanded = expandedSensor === sensor.key;
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8">
+            {waterSensors.map(renderSensorCard)}
+          </div>
 
-              // Compute hardware probe health
-              const isDisconnected = connectionState !== "live";
-              const isFaulty =
-                !isDisconnected &&
-                (sensor.value === null ||
-                  sensor.value === undefined ||
-                  sensor.value === -999);
-              const probeHealthState = isDisconnected
-                ? "DISCONNECTED"
-                : isFaulty
-                  ? "FAULTY"
-                  : "WORKING";
-
-              return (
-                <div
-                  key={sensor.key}
-                  className="bg-[#fffaf2] rounded-xl p-4 border border-[#ddd4c4] shadow-sm hover:border-[#1e3a8a]/40 transition-all flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-1.5">
-                        <Icon className="w-4 h-4 text-[#1e3a8a]" />
-                        <p className="text-xs text-[#7c7366] font-semibold">
-                          {sensor.name}
-                        </p>
-                      </div>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                          sensor.status === "safe"
-                            ? "bg-[#15803d]/10 text-[#15803d]"
-                            : sensor.status === "caution"
-                              ? "bg-[#b45309]/10 text-[#b45309]"
-                              : sensor.status === "danger"
-                                ? "bg-[#9a3412]/10 text-[#9a3412]"
-                                : "bg-secondary text-muted-foreground"
-                        }`}
-                      >
-                        {sensor.status === "unknown"
-                          ? "NO DATA"
-                          : sensor.status.toUpperCase()}
-                      </span>
-                    </div>
-
-                    {/* Hardware Probe Health Badge */}
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-2">
-                      <div className="flex items-center gap-1">
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            probeHealthState === "WORKING"
-                              ? "bg-[#15803d]"
-                              : probeHealthState === "FAULTY"
-                                ? "bg-[#b45309]"
-                                : "bg-[#9a3412]"
-                          }`}
-                        />
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-[#7c7366]">
-                          {probeHealthState}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() =>
-                          setExpandedSensor(isExpanded ? null : sensor.key)
-                        }
-                        className="text-[#a8a29e] hover:text-[#1e3a8a] transition-colors"
-                        title="View Habitat Target"
-                      >
-                        <Info className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {/* Expandable description */}
-                    {isExpanded && (
-                      <div className="text-[10px] mb-3 leading-relaxed border-l-2 border-[#1e3a8a] pl-2 py-1 bg-[#f5f0eb] rounded-r-lg">
-                        <p className="text-[#1a1714] font-medium mb-1">
-                          Target: {sensor.threshold.safe[0]}–{sensor.threshold.safe[1]} {sensor.unit}
-                        </p>
-                        <p className="text-[#7c7366]">
-                          {sensor.description}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Big KPI Value */}
-                    <div className="my-2 flex items-baseline justify-between">
-                      <p className="text-2xl font-mono font-bold tracking-tight text-[#1a1714] tabular-nums">
-                        {isFaulty ? "FAULT" : isDisconnected ? "OFFLINE" : truncTo2(sensor.value)}
-                      </p>
-                      <span className={`text-[10px] font-bold ${alert.cls}`}>
-                        {alert.text}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Sparkline */}
-                  <div className="h-10 mt-2 -mx-1">
-                    {sparkData.some((d) => d.value !== null) ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={sparkData}>
-                          <XAxis dataKey="time" hide />
-                          <YAxis hide />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "#1a1714",
-                              color: "#ffffff",
-                              border: "none",
-                              borderRadius: "6px",
-                              padding: "4px 8px",
-                              fontSize: "11px",
-                            }}
-                            itemStyle={{ color: "#ffffff" }}
-                            labelStyle={{ color: "#a8a29e", fontSize: "10px" }}
-                            formatter={(v) => [
-                              v != null ? `${truncTo2(v)} ${sensor.unit}` : "—",
-                              sensor.name,
-                            ]}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            stroke="#1e3a8a"
-                            dot={false}
-                            strokeWidth={1.8}
-                            isAnimationActive={false}
-                            connectNulls
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <p className="text-[10px] text-[#a8a29e]">
-                          No telemetry history
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="mb-3">
+            <h3 className="text-base font-header font-bold text-[#1a1714]">
+              Environmental Context (Read-Only)
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {envSensors.map(renderSensorCard)}
           </div>
         </div>
 
