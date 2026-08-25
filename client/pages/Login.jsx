@@ -330,13 +330,6 @@ export default function Login() {
                   )}
                 </button>
               </div>
-              {/* Forgot password hint */}
-              <p className="text-[10px] text-[#a8a29e] mt-1.5 text-right">
-                Forgot your password?{" "}
-                <span className="text-[#7c7366] font-semibold">
-                  Contact your administrator.
-                </span>
-              </p>
             </div>
 
             {error && (
