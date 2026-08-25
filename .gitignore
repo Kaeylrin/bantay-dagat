@@ -24,9 +24,21 @@ dist-ssr
 *.sw?
 
 .config/
-!.env
+
 
 # Firebase Admin SDK service account key (NEVER commit)
 firebase-service-account*.json
 
 .vercel
+
+# Private configuration and credentials stay local
+.env
+.env.*
+!.env.example
+*service-account*.json
+*service_account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+.secrets/
