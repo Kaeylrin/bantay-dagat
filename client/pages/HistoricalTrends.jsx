@@ -1,3 +1,53 @@
+
+  const renderStatsTable = (title, statsArray) => (
+    <div className="mb-6">
+      <h3 className="text-sm font-header font-bold text-[#1a1714] mb-3">{title}</h3>
+      <div className="overflow-x-auto rounded-xl border border-secondary">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-secondary/30 border-b border-secondary">
+              <th className="py-2.5 px-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Parameter</th>
+              <th className="py-2.5 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Min</th>
+              <th className="py-2.5 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Average</th>
+              <th className="py-2.5 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Max</th>
+              <th className="py-2.5 px-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider min-w-[160px]">% in Safe Range</th>
+            </tr>
+          </thead>
+          <tbody>
+            {statsArray.map((s) => {
+              if (s.noData) return (
+                <tr key={s.key} className="border-b border-secondary/40">
+                  <td className="py-3 px-4 font-medium text-foreground">{s.name}</td>
+                  <td colSpan={4} className="py-3 px-4 text-center text-xs text-muted-foreground italic">No data available</td>
+                </tr>
+              );
+              const t = THRESHOLDS[s.key];
+              const minStatus = s.min < t.safeMin || s.min > t.safeMax ? "text-caution" : "text-safe";
+              const maxStatus = s.max < t.safeMin || s.max > t.safeMax ? "text-caution" : "text-safe";
+              const avgStatus = s.avg < t.safeMin || s.avg > t.safeMax ? "text-caution font-bold" : "text-safe font-bold";
+              return (
+                <tr key={s.key} className="border-b border-secondary/40 hover:bg-secondary/10 transition-colors">
+                  <td className="py-3 px-4 font-medium text-foreground">{s.name}</td>
+                  <td className={`py-3 px-4 text-center font-mono text-xs ${minStatus}`}>{truncTo2(s.min)} {s.unit}</td>
+                  <td className={`py-3 px-4 text-center font-mono text-xs ${avgStatus}`}>{truncTo2(s.avg)} {s.unit}</td>
+                  <td className={`py-3 px-4 text-center font-mono text-xs ${maxStatus}`}>{truncTo2(s.max)} {s.unit}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${s.pctSafe >= 80 ? "bg-safe" : s.pctSafe >= 50 ? "bg-caution" : "bg-danger"}`} style={{ width: `${s.pctSafe}%` }} />
+                      </div>
+                      <span className={`text-xs font-bold w-10 text-right shrink-0 ${s.pctSafe >= 80 ? "text-safe" : s.pctSafe >= 50 ? "text-caution" : "text-danger"}`}>{s.pctSafe.toFixed(0)}%</span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
 import { useState, useEffect, useMemo } from "react";
 import Layout from "@/components/Layout";
 import {
@@ -572,7 +622,7 @@ export default function HistoricalTrends() {
                       {analytics.pctAllSafe.toFixed(1)}%
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      % of readings where ALL 5 parameters were in safe range
+                      % of readings where ALL water quality parameters were in safe range
                     </p>
                     <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
                       <div
