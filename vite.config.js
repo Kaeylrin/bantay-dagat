@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createServer } from "./server/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,7 +30,10 @@ function expressPlugin() {
   return {
     name: "express-plugin",
     apply: "serve",
-    configureServer(server) {
+    async configureServer(server) {
+      // Dynamic import so the server code (firebase-admin, express, etc.)
+      // is NEVER evaluated during `vite build` — only during `vite serve`.
+      const { createServer } = await import("./server/index.js");
       const app = createServer();
       server.middlewares.use(app);
     },

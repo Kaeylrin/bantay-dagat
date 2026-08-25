@@ -14,7 +14,7 @@ import { RefreshCw } from "lucide-react";
 export const LOGIN_FLAG_KEY = "bd_login_in_progress";
 
 function ProtectedRoute({ element }) {
-  const { currentUser, userRole, loading } = useAuth();
+  const { currentUser, loading } = useAuth();
   if (loading) return <LoadingScreen />;
   if (!currentUser) return <Navigate to="/login" replace />;
 
@@ -30,7 +30,7 @@ function AdminRoute({ element }) {
 }
 
 function PublicRoute({ element }) {
-  const { currentUser, userRole, loading } = useAuth();
+  const { currentUser, loading } = useAuth();
   if (loading) return <LoadingScreen />;
 
   const loginBusy = sessionStorage.getItem(LOGIN_FLAG_KEY);
@@ -40,7 +40,7 @@ function PublicRoute({ element }) {
 }
 
 function AdminPublicRoute({ element }) {
-  const { currentUser, userRole, loading } = useAuth();
+  const { currentUser, loading } = useAuth();
   if (loading) return <LoadingScreen />;
 
   const loginBusy = sessionStorage.getItem(LOGIN_FLAG_KEY);
