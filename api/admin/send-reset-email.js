@@ -75,54 +75,81 @@ export default async function handler(req, res) {
       html: `
         <!DOCTYPE html>
         <html>
-          <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
-          <body style="margin:0;padding:0;background-color:#0f172a;font-family:'Segoe UI',Arial,sans-serif;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:40px 20px;">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>Reset your BantayDagat password</title>
+          </head>
+          <body style="margin:0;padding:0;background-color:#f5f5f4;font-family:'Segoe UI',Arial,sans-serif;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f4;padding:40px 20px;">
               <tr>
                 <td align="center">
-                  <table width="100%" cellpadding="0" cellspacing="0"
-                    style="background-color:#1e293b;border-radius:16px;border:1px solid #334155;max-width:480px;overflow:hidden;">
+                  <table width="100%" max-width="480" cellpadding="0" cellspacing="0"
+                    style="background-color:#fffaf2;border-radius:16px;border:1px solid #ddd4c4;max-width:480px;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+                    
+                    <!-- Header -->
                     <tr>
                       <td align="center" style="padding:32px 32px 24px;">
                         <img src="https://bantaydagat.site/bantay-dagat.png" alt="BantayDagat" width="72" height="72"
-                          style="border-radius:12px;margin-bottom:16px;display:block;" />
-                        <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 4px;">BantayDagat</h1>
-                        <p style="color:#64748b;font-size:13px;margin:0;">Water Quality Monitoring System</p>
+                          style="display:block;margin-bottom:16px;" />
+                        <h1 style="color:#1a1714;font-size:24px;font-weight:700;margin:0 0 4px;">BantayDagat</h1>
+                        <p style="color:#7c7366;font-size:13px;margin:0;">Water Quality Monitoring System</p>
                       </td>
                     </tr>
-                    <tr><td style="padding:0 32px;"><div style="height:1px;background-color:#334155;"></div></td></tr>
+
+                    <!-- Divider -->
+                    <tr>
+                      <td style="padding:0 32px;">
+                        <div style="height:1px;background-color:#ddd4c4;"></div>
+                      </td>
+                    </tr>
+
+                    <!-- Body -->
                     <tr>
                       <td style="padding:32px;">
-                        <h2 style="color:#ffffff;font-size:18px;font-weight:600;margin:0 0 12px;">Reset Your Password</h2>
-                        <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px;">
+                        <h2 style="color:#1a1714;font-size:18px;font-weight:600;margin:0 0 12px;">Reset Your Password</h2>
+                        <p style="color:#7c7366;font-size:14px;line-height:1.6;margin:0 0 24px;">
                           Hello,<br/><br/>
-                          A password reset was requested for your <strong style="color:#ffffff;">BantayDagat</strong> account
-                          (<span style="color:#34d399;">${email}</span>).<br/><br/>
-                          Click the button below to set a new password. This link will expire in <strong style="color:#ffffff;">1 hour</strong>.
+                          A password reset was requested for your <strong style="color:#1a1714;">BantayDagat</strong> account 
+                          (<span style="color:#1e3a8a;font-weight:600;">${email}</span>).<br/><br/>
+                          Click the button below to set a new password. This link will expire in <strong style="color:#1a1714;">1 hour</strong>.
                         </p>
+
+                        <!-- CTA Button -->
                         <table width="100%" cellpadding="0" cellspacing="0">
                           <tr>
                             <td align="center">
                               <a href="${directLink}"
-                                style="display:inline-block;background:linear-gradient(135deg,#10b981,#0d9488);color:#ffffff;
+                                style="display:inline-block;background-color:#1e3a8a;color:#ffffff;
                                        font-size:15px;font-weight:600;text-decoration:none;padding:14px 32px;
-                                       border-radius:10px;">
+                                       border-radius:8px;letter-spacing:0.3px;">
                                 Reset Password →
                               </a>
                             </td>
                           </tr>
                         </table>
-                        <p style="color:#64748b;font-size:12px;line-height:1.6;margin:24px 0 0;text-align:center;">
-                          If you didn't request this, you can safely ignore this email.<br/>This link expires in 1 hour.
+
+                        <p style="color:#a8a29e;font-size:12px;line-height:1.6;margin:24px 0 0;text-align:center;">
+                          If you didn't request a password reset, you can safely ignore this email.<br/>
+                          This link expires in 1 hour.
                         </p>
                       </td>
                     </tr>
-                    <tr><td style="padding:0 32px;"><div style="height:1px;background-color:#334155;"></div></td></tr>
+
+                    <!-- Footer -->
                     <tr>
-                      <td align="center" style="padding:20px 32px;">
-                        <p style="color:#475569;font-size:12px;margin:0;">© 2025 BantayDagat · IoT-Based Water Quality Monitoring</p>
+                      <td style="padding:0 32px;">
+                        <div style="height:1px;background-color:#ddd4c4;"></div>
                       </td>
                     </tr>
+                    <tr>
+                      <td align="center" style="padding:20px 32px;">
+                        <p style="color:#a8a29e;font-size:12px;margin:0;">
+                          © 2025 BantayDagat · IoT-Based Water Quality Monitoring
+                        </p>
+                      </td>
+                    </tr>
+
                   </table>
                 </td>
               </tr>
