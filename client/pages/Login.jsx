@@ -272,7 +272,7 @@ export default function Login() {
           <form
             onSubmit={handleSubmit}
             className="space-y-4"
-            autoComplete="on"
+            autoComplete="off"
           >
             <div>
               <label
@@ -292,7 +292,7 @@ export default function Login() {
                   setFailCount(0);
                   setLockedUntil(null);
                 }}
-                autoComplete="username"
+                autoComplete="off"
                 placeholder="ranger@gmail.com"
                 disabled={isLoading}
                 className="w-full px-3.5 py-2 rounded-lg border border-[#ddd4c4] bg-[#f5f5f4] text-[#1a1714] placeholder-[#a8a29e] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:border-transparent transition-colors disabled:opacity-60 font-medium"
