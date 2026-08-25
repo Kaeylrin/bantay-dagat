@@ -1,15 +1,22 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
-import { Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
+import { useAuth } from "@/lib/authContext";
+
 const NotFound = () => {
   const location = useLocation();
+  const { currentUser } = useAuth();
+
   useEffect(() => {
     console.error(
       "404 Error: User attempted to access non-existent route:",
       location.pathname,
     );
   }, [location.pathname]);
+
+  const returnTo = currentUser ? "/dashboard" : "/login";
+  const returnLabel = currentUser ? "Return to Dashboard" : "Return to Login";
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center max-w-md">
@@ -22,10 +29,10 @@ const NotFound = () => {
           The page you're looking for doesn't exist or has been moved.
         </p>
         <Link
-          to="/login"
+          to={returnTo}
           className="inline-block px-6 py-2.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
         >
-          Return to Login
+          {returnLabel}
         </Link>
       </div>
     </div>
