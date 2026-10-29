@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import * as Popover from "@radix-ui/react-popover";
 import Layout from "@/components/Layout";
 import {
   Thermometer,
@@ -99,6 +100,40 @@ function describeValue(cfg, value, status) {
   if (status === "danger")
     return value > cMax ? `above danger limit ${cMax} ${cfg.unit}` : `below danger limit ${cMin} ${cfg.unit}`;
   return "";
+}
+
+function SummaryLabel({ label, explanation }) {
+  return (
+    <div className="text-[10px] text-[#7c7366] mt-1 leading-tight flex flex-wrap items-center justify-center gap-1">
+      <span>{label}</span>
+      <Popover.Root>
+        <Popover.Trigger asChild>
+          <button
+            type="button"
+            aria-label={`Explain ${label.toLowerCase()}`}
+            title={explanation}
+            className="inline-flex shrink-0 items-center justify-center rounded-full p-1 text-[#1e3a8a] hover:bg-[#1e3a8a]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a8a] focus-visible:ring-offset-2"
+          >
+            <Info className="h-3 w-3" aria-hidden="true" />
+          </button>
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content
+            side="top"
+            sideOffset={6}
+            collisionPadding={12}
+            aria-label={label}
+            className="z-[110] w-64 max-w-[calc(100vw-24px)] rounded-lg border border-[#ddd4c4] bg-[#fffaf2] p-3 text-left text-xs leading-relaxed text-[#1a1714] shadow-lg"
+            onOpenAutoFocus={(event) => event.preventDefault()}
+          >
+            <p className="mb-1 font-semibold">{label}</p>
+            <p>{explanation}</p>
+            <Popover.Arrow className="fill-[#fffaf2]" />
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    </div>
+  );
 }
 
 function formatEta(min) {
@@ -611,19 +646,28 @@ export default function Dashboard() {
                       >
                         {allSafePercent !== null ? `${allSafePercent}%` : "--"}
                       </p>
-                      <p className="text-[10px] text-[#7c7366] mt-1 leading-tight">Fully-safe water readings</p>
+                      <SummaryLabel
+                        label="Fully-safe water readings"
+                        explanation="The percentage of recent saved readings where water temperature, pH and turbidity were all in their Safe ranges. We check up to 50 readings and leave out faulty ones. This describes past readings, not the current conditions."
+                      />
                     </div>
                     <div>
                       <p className="text-xl font-header font-bold text-[#1e3a8a] leading-none">
                         {consistency.total ? `${consistency.allowed}/${consistency.total}` : "--"}
                       </p>
-                      <p className="text-[10px] text-[#7c7366] mt-1 leading-tight">Last readings allowing release</p>
+                      <SummaryLabel
+                        label="Last readings allowing release"
+                        explanation="How many of the last 3 saved readings received GO or GO (CAUTION). For example, 0/3 means none of those three got a GO result. This does not change the current assessment."
+                      />
                     </div>
                     <div>
                       <p className="text-xl font-header font-bold text-[#1a1714] leading-none">
                         {stableCount}/{WATER_KEYS.length}
                       </p>
-                      <p className="text-[10px] text-[#7c7366] mt-1 leading-tight">Stable water params</p>
+                      <SummaryLabel
+                        label="Stable water params"
+                        explanation="How many of the 3 water measurements are staying steady instead of changing quickly. A 0/3 result can also mean there are not enough readings to tell. Steady does not always mean safe."
+                      />
                     </div>
                   </div>
                 </div>
