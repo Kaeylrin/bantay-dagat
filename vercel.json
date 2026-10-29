@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npx vite build",
+  "outputDirectory": "dist/spa",
+  "framework": null,
+  "rewrites": [
+    { "source": "/__/auth/(.*)", "destination": "/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

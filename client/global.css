@@ -1,0 +1,136 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 29% 93%;
+    --foreground: 30 11% 9%;
+
+    --card: 39 100% 98%;
+    --card-foreground: 30 11% 9%;
+
+    --popover: 39 100% 98%;
+    --popover-foreground: 30 11% 9%;
+
+    --primary: 224 64% 33%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 39 33% 88%;
+    --secondary-foreground: 30 11% 9%;
+
+    --muted: 30 25% 94%;
+    --muted-foreground: 34 10% 45%;
+
+    --accent: 224 64% 33%;
+    --accent-foreground: 0 0% 100%;
+
+    --safe: 142 71% 29%;
+    --caution: 36 89% 37%;
+    --danger: 17 88% 34%;
+
+    --destructive: 17 88% 34%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 39 25% 82%;
+    --input: 39 25% 82%;
+    --ring: 224 64% 33%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 39 100% 98%;
+    --sidebar-foreground: 30 11% 9%;
+    --sidebar-primary: 224 64% 33%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 39 33% 88%;
+    --sidebar-accent-foreground: 30 11% 9%;
+    --sidebar-border: 39 25% 82%;
+    --sidebar-ring: 224 64% 33%;
+  }
+
+  .dark {
+    --background: 30 11% 9%;
+    --foreground: 39 100% 98%;
+
+    --card: 26 15% 14%;
+    --card-foreground: 39 100% 98%;
+
+    --popover: 26 15% 14%;
+    --popover-foreground: 39 100% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 30 11% 9%;
+
+    --secondary: 30 10% 20%;
+    --secondary-foreground: 39 100% 98%;
+
+    --muted: 30 10% 20%;
+    --muted-foreground: 34 10% 65%;
+
+    --accent: 217 91% 60%;
+    --accent-foreground: 30 11% 9%;
+
+    --safe: 142 70% 45%;
+    --caution: 36 89% 55%;
+    --danger: 17 88% 50%;
+
+    --destructive: 17 88% 50%;
+    --destructive-foreground: 39 100% 98%;
+
+    --border: 30 10% 25%;
+    --input: 30 10% 25%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 26 15% 12%;
+    --sidebar-foreground: 39 100% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 30 11% 9%;
+    --sidebar-accent: 30 10% 20%;
+    --sidebar-accent-foreground: 39 100% 98%;
+    --sidebar-border: 30 10% 25%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-header;
+  }
+
+  :where(p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, td, th) {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  pre,
+  code {
+    overflow-x: auto;
+    white-space: pre;
+  }
+}
+
+@layer utilities {
+  .bottom-blend-mask {
+    -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.5) 30%, rgba(0, 0, 0, 0.15) 60%, rgba(0, 0, 0, 0) 80%, rgba(0, 0, 0, 0) 100%);
+    mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.5) 30%, rgba(0, 0, 0, 0.15) 60%, rgba(0, 0, 0, 0) 80%, rgba(0, 0, 0, 0) 100%);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+  }
+}

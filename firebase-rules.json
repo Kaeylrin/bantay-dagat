@@ -1,0 +1,37 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "bantaydagat": {
+      "readings": {
+        ".indexOn": ["timestamp"],
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'ranger')",
+        ".write": "auth != null"
+      },
+      "latest": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'ranger')",
+        ".write": "auth != null"
+      },
+      "alerts": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'ranger')",
+        ".write": "auth != null"
+      }
+    },
+
+    "users": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.uid === $uid && !data.exists()))"
+      }
+    },
+
+    "loginAttempts": {
+      "$email_key": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}
