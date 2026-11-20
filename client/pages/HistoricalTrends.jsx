@@ -492,7 +492,7 @@ export default function HistoricalTrends() {
                     title={gt.desc}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs transition-all ${
                       active
-                        ? "bg-white text-primary shadow-sm border border-secondary"
+                        ? "bg-card text-primary shadow-sm border border-secondary"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -547,7 +547,7 @@ export default function HistoricalTrends() {
 
         {/* ── Reading summary Section ─────────────────────────────────────────── */}
         {hasData && analytics && (
-          <div className="mb-6 bg-white rounded-xl border border-secondary shadow-sm overflow-hidden">
+          <div className="mb-6 bg-card rounded-xl border border-secondary shadow-sm overflow-hidden">
             {/* Analytics header / toggle */}
             <button
               onClick={() => setShowAnalytics(!showAnalytics)}

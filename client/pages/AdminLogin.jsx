@@ -256,7 +256,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <AccessShell>
+    <AccessShell variant="admin">
       <h1 className="text-2xl font-bold tracking-tight">
         Administrator sign in
       </h1>

@@ -191,7 +191,7 @@ function WeatherPanel() {
             ].map((stat) => (
               <div
                 key={stat.label}
-                className="bg-white rounded-xl p-4 border border-secondary shadow-sm"
+                className="bg-card rounded-xl p-4 border border-secondary shadow-sm"
               >
                 <div className="flex items-center gap-2 mb-2">
                   {stat.icon}
@@ -215,7 +215,7 @@ function WeatherPanel() {
               {data.daily.time.map((date, i) => (
                 <div
                   key={date}
-                  className="bg-white rounded-xl p-3 border border-secondary shadow-sm text-center"
+                  className="bg-card rounded-xl p-3 border border-secondary shadow-sm text-center"
                 >
                   <p className="text-xs text-muted-foreground font-medium mb-2">
                     {new Date(date).toLocaleDateString("en-PH", {

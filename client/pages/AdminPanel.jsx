@@ -195,7 +195,7 @@ function RangerItem({ ranger }) {
                     if (e.key === "Escape") setEditing(false);
                   }}
                   autoFocus
-                  className="px-2 py-0.5 rounded border border-primary bg-white text-foreground text-xs w-40 focus:outline-none"
+                  className="px-2 py-0.5 rounded border border-primary bg-card text-foreground text-xs w-40 focus:outline-none"
                 />
                 <button
                   onClick={handleSaveName}

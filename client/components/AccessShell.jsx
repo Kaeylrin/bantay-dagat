@@ -1,6 +1,6 @@
-export default function AccessShell({ children }) {
+export default function AccessShell({ children, variant = "ranger" }) {
   return (
-    <main className="access-shell">
+    <main className="access-shell" data-variant={variant}>
       <div className="mb-6 flex items-center gap-3">
         <img
           src="/bantay-dagat.png"

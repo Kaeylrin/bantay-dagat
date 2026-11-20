@@ -390,7 +390,7 @@ export default function Layout({ children }) {
         <div className="fixed inset-0 z-50 lg:hidden">
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-800/40 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
           {/* Slide-out panel (single X button handled in sidebarContent) */}
@@ -513,7 +513,7 @@ export default function Layout({ children }) {
       {showLogoutModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-800/40 backdrop-blur-sm"
             onClick={() => setShowLogoutModal(false)}
           />
           <div role="dialog" aria-modal="true" aria-label="Confirm Logout" className="bg-card rounded-xl border border-border shadow-2xl w-full max-w-sm mx-4 p-6 relative z-10 animate-in fade-in zoom-in-95 duration-200">
