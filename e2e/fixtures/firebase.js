@@ -61,3 +61,11 @@ window.__stationTest = {
   set,
   fail(path, message) { for (const entry of subscriptions.get(path) ?? []) entry.error?.({ message }); },
 };
+
+export async function verifyPasswordResetCode(_, code) {
+  if (code === "fixture-reset") return "ranger@example.test";
+  throw new Error("Invalid reset link");
+}
+export async function confirmPasswordReset(_, code) {
+  await verifyPasswordResetCode(_, code);
+}

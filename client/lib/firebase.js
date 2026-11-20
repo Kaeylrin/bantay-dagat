@@ -21,6 +21,8 @@ import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
   setPersistence,
   browserSessionPersistence,
 } from "firebase/auth";
@@ -92,4 +94,6 @@ export {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
 };

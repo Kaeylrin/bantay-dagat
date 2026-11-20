@@ -25,38 +25,38 @@ import { formatAge } from "@/lib/sensors";
 const HEALTH_TONE = {
   WORKING: {
     label: "LIVE",
-    pillText: "Live Sea Signal Active",
-    dot: "bg-[#15803d]",
-    badge: "bg-[#15803d]/10 text-[#15803d]",
-    pill: "bg-[#15803d]/10 border-[#15803d]/30 text-[#15803d]",
+    pillText: "Station online",
+    dot: "bg-safe",
+    badge: "bg-safe/10 text-safe",
+    pill: "bg-safe/10 border-safe/30 text-safe",
   },
   FAULTY: {
     label: "FAULTY",
-    pillText: "Sensor Probe Fault",
-    dot: "bg-[#b45309]",
-    badge: "bg-[#b45309]/10 text-[#b45309]",
-    pill: "bg-[#b45309]/10 border-[#b45309]/30 text-[#b45309]",
+    pillText: "Sensor needs attention",
+    dot: "bg-caution",
+    badge: "bg-caution/10 text-caution",
+    pill: "bg-caution/10 border-caution/30 text-caution",
   },
   OFFLINE: {
     label: "OFFLINE",
-    pillText: "Signal Disconnected",
-    dot: "bg-[#9a3412]",
-    badge: "bg-[#9a3412]/10 text-[#9a3412]",
-    pill: "bg-[#9a3412]/10 border-[#9a3412]/30 text-[#9a3412]",
+    pillText: "Station offline",
+    dot: "bg-danger",
+    badge: "bg-danger/10 text-danger",
+    pill: "bg-danger/10 border-danger/30 text-danger",
   },
   CONNECTING: {
     label: "…",
     pillText: "Connecting…",
-    dot: "bg-[#a8a29e]",
+    dot: "bg-muted-foreground",
     badge: "bg-secondary text-muted-foreground",
-    pill: "bg-secondary/60 border-[#ddd4c4] text-[#7c7366]",
+    pill: "bg-secondary/60 border-border text-muted-foreground",
   },
 };
 
 const PROBE_TONE = {
-  WORKING: { label: "Working", text: "text-[#15803d]", dot: "bg-[#15803d]" },
-  FAULTY: { label: "Faulty", text: "text-[#b45309]", dot: "bg-[#b45309]" },
-  OFFLINE: { label: "Offline", text: "text-[#9a3412]", dot: "bg-[#9a3412]" },
+  WORKING: { label: "Working", text: "text-safe", dot: "bg-safe" },
+  FAULTY: { label: "Faulty", text: "text-caution", dot: "bg-caution" },
+  OFFLINE: { label: "Offline", text: "text-danger", dot: "bg-danger" },
 };
 
 export default function Layout({ children }) {
@@ -73,11 +73,11 @@ export default function Layout({ children }) {
       buoy.connection === "connecting"
         ? "Connecting to monitoring station…"
         : buoy.connection === "error"
-          ? "Database unreachable"
+          ? "Cannot load station data"
           : buoy.connection === "empty"
-            ? "No packet ever received"
+            ? "Waiting for the first reading"
             : buoy.connection === "offline"
-              ? `${buoy.databaseConnected === false ? "Database disconnected" : "Station packet stale or timestamp invalid"} · last packet ${lastPacketLabel}`
+              ? `${buoy.databaseConnected === false ? "Database disconnected" : "No fresh station reading"} · last update ${lastPacketLabel}`
               : buoy.faultyCount > 0
                 ? `${buoy.workingCount} of ${buoy.probes.length} probes working · ${buoy.faultyCount} faulty`
                 : `All ${buoy.probes.length} probes working · ${lastPacketLabel}`,
@@ -112,16 +112,16 @@ export default function Layout({ children }) {
 
   const baseNav = [
     { path: "/dashboard", label: "Dashboard", icon: LayoutGrid },
-    { path: "/trends", label: "Historical Trends", icon: TrendingUp },
+    { path: "/trends", label: "Reading history", icon: TrendingUp },
     { path: "/alerts", label: "Alert Logs", icon: AlertCircle },
-    { path: "/environment", label: "Environmental Data", icon: Globe },
+    { path: "/environment", label: "Local weather", icon: Globe },
   ];
 
   const navItems =
     userRole === "admin"
       ? [
           ...baseNav,
-          { path: "/admin", label: "Admin Panel", icon: ShieldCheck },
+          { path: "/admin", label: "Ranger accounts", icon: ShieldCheck },
         ]
       : baseNav;
 
@@ -179,7 +179,7 @@ export default function Layout({ children }) {
 
   const sidebarContent = (
     <>
-      <div className="p-4 flex items-center justify-between border-b border-[#ddd4c4] h-14 overflow-hidden">
+      <div className="p-4 flex items-center justify-between border-b border-border h-16 overflow-hidden">
         <div className="flex items-center gap-3 min-w-0">
           <img
             src="/bantay-dagat.png"
@@ -190,8 +190,8 @@ export default function Layout({ children }) {
             <span className="font-header font-bold text-foreground text-sm tracking-tight block leading-none">
               BantayDagat
             </span>
-            <span className="text-[10px] text-muted-foreground font-medium">
-              IoT Marine Monitor
+            <span className="text-xs text-muted-foreground font-medium">
+              Ranger workspace
             </span>
           </div>
         </div>
@@ -205,9 +205,9 @@ export default function Layout({ children }) {
       </div>
 
       {/* Navigation Groups */}
-      <nav className="flex-1 p-2.5 space-y-4 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 px-3 py-5 space-y-5 overflow-y-auto overflow-x-hidden">
         <div>
-          <div className={`px-3 py-1 text-[10px] font-bold uppercase tracking-[1.2px] text-muted-foreground overflow-hidden transition-all duration-300 whitespace-nowrap ${collapsed ? "max-w-0 opacity-0" : "max-w-[150px] opacity-100"}`}>
+          <div className={`px-3 py-1 text-xs font-bold uppercase tracking-[1.2px] text-muted-foreground overflow-hidden transition-all duration-300 whitespace-nowrap ${collapsed ? "max-w-0 opacity-0" : "max-w-[150px] opacity-100"}`}>
             Monitoring
           </div>
           <div className="mt-1 space-y-1">
@@ -218,17 +218,18 @@ export default function Layout({ children }) {
                 <Link
                   key={item.path}
                   to={item.path}
+                  aria-current={active ? "page" : undefined}
                   title={collapsed ? item.label : undefined}
-                  className={`relative flex items-center h-10 px-3 rounded-lg transition-colors text-xs ${
+                  className={`relative flex items-center h-11 px-3 rounded-xl transition-colors text-sm ${
                     active
-                      ? "bg-[#f5f0eb] border border-[#ddd4c4] text-[#1e3a8a] font-bold shadow-2xs"
-                      : "text-[#1a1714] hover:bg-[#f5f0eb]/70 font-medium"
+                      ? "bg-primary/10 text-primary font-bold"
+                      : "text-foreground hover:bg-muted/70 font-medium"
                   }`}
                 >
                   {active && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#1e3a8a] rounded-r-md" />
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-primary rounded-r-md" />
                   )}
-                  <Icon className={`w-4 h-4 shrink-0 ${active ? "text-[#1e3a8a]" : "text-[#7c7366]"}`} />
+                  <Icon className={`w-4 h-4 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} />
                   <span className={`ml-2.5 overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap truncate ${collapsed ? "max-w-0 opacity-0" : "max-w-[140px] opacity-100"}`}>
                     {item.label}
                   </span>
@@ -240,7 +241,7 @@ export default function Layout({ children }) {
 
         {userRole === "admin" && (
           <div>
-            <div className={`px-3 py-1 text-[10px] font-bold uppercase tracking-[1.2px] text-muted-foreground overflow-hidden transition-all duration-300 whitespace-nowrap ${collapsed ? "max-w-0 opacity-0" : "max-w-[150px] opacity-100"}`}>
+            <div className={`px-3 py-1 text-xs font-bold uppercase tracking-[1.2px] text-muted-foreground overflow-hidden transition-all duration-300 whitespace-nowrap ${collapsed ? "max-w-0 opacity-0" : "max-w-[150px] opacity-100"}`}>
               Administration
             </div>
             <div className="mt-1 space-y-1">
@@ -251,17 +252,18 @@ export default function Layout({ children }) {
                   <Link
                     key={item.path}
                     to={item.path}
+                  aria-current={active ? "page" : undefined}
                     title={collapsed ? item.label : undefined}
-                    className={`relative flex items-center h-10 px-3 rounded-lg transition-colors text-xs ${
+                    className={`relative flex items-center h-11 px-3 rounded-xl transition-colors text-sm ${
                       active
-                        ? "bg-[#f5f0eb] border border-[#ddd4c4] text-[#1e3a8a] font-bold shadow-2xs"
-                        : "text-[#1a1714] hover:bg-[#f5f0eb]/70 font-medium"
+                        ? "bg-primary/10 text-primary font-bold"
+                        : "text-foreground hover:bg-muted/70 font-medium"
                     }`}
                   >
                     {active && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#1e3a8a] rounded-r-md" />
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-primary rounded-r-md" />
                     )}
-                    <Icon className={`w-4 h-4 shrink-0 ${active ? "text-[#1e3a8a]" : "text-[#7c7366]"}`} />
+                    <Icon className={`w-4 h-4 shrink-0 ${active ? "text-primary" : "text-muted-foreground"}`} />
                     <span className={`ml-2.5 overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap truncate ${collapsed ? "max-w-0 opacity-0" : "max-w-[140px] opacity-100"}`}>
                       {item.label}
                     </span>
@@ -272,35 +274,35 @@ export default function Layout({ children }) {
           </div>
         )}
 
-        {/* Ranger Duty Checklist Box */}
+        {/* Station healthlist Box */}
         <div className="mt-4 overflow-hidden transition-all duration-300">
           {!collapsed ? (
             <div
-              className="p-3 rounded-[10px] bg-[#f5f0eb] border border-border text-xs animate-in fade-in duration-200"
+              className="p-3 rounded-xl bg-muted border border-border text-xs animate-in fade-in duration-200"
               role="status"
               aria-live="polite"
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold text-foreground text-[11px]">
-                  Ranger Duty Check
+                <span className="font-bold text-foreground text-xs">
+                  Station health
                 </span>
                 <span
-                  className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${HEALTH_TONE[sensorHealth.state].badge}`}
+                  className={`flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded ${HEALTH_TONE[sensorHealth.state].badge}`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${HEALTH_TONE[sensorHealth.state].dot} ${sensorHealth.state === "WORKING" ? "animate-pulse" : ""}`} />
                   {HEALTH_TONE[sensorHealth.state].label}
                 </span>
               </div>
 
-              <p className="text-[11px] text-muted-foreground mt-1 font-medium leading-snug">
+              <p className="text-xs text-muted-foreground mt-1 font-medium leading-snug">
                 {sensorHealth.message}
               </p>
 
               {/* Individual Probe Breakdown List — water probes drive GO/NO-GO */}
-              <div className="mt-2.5 pt-2 border-t border-[#ddd4c4] space-y-1.5">
+              <div className="mt-2.5 pt-2 border-t border-border space-y-1.5">
                 {["water", "environment"].map((group) => (
                   <div key={group} className="space-y-1">
-                    <p className="text-[9px] font-bold uppercase tracking-[1px] text-[#a8a29e]">
+                    <p className="text-xs font-bold uppercase tracking-[1px] text-muted-foreground">
                       {group === "water" ? "Water · decision" : "Environment · context"}
                     </p>
                     {sensorHealth.probes
@@ -310,11 +312,11 @@ export default function Layout({ children }) {
                         return (
                           <div
                             key={probe.key}
-                            className="flex items-center justify-between text-[11px]"
+                            className="flex items-center justify-between text-xs"
                             title={probe.reason || undefined}
                           >
-                            <span className="text-[#1a1714] font-medium">{probe.label}</span>
-                            <span className={`flex items-center gap-1 text-[10px] font-bold ${tone.text}`}>
+                            <span className="text-foreground font-medium">{probe.label}</span>
+                            <span className={`flex items-center gap-1 text-xs font-bold ${tone.text}`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${tone.dot}`} />
                               {tone.label}
                             </span>
@@ -337,18 +339,18 @@ export default function Layout({ children }) {
       </nav>
 
       {/* User & Role footer */}
-      <div className="px-3 py-2 border-t border-[#ddd4c4] overflow-hidden">
+      <div className="px-3 py-2 border-t border-border overflow-hidden">
         <div
           title={collapsed ? (userRole === "admin" ? "Administrator" : "Ranger On Duty") : undefined}
-          className={`flex items-center h-9 px-3 rounded-lg text-[11px] font-bold tracking-wide uppercase transition-colors ${
+          className={`flex items-center h-9 px-3 rounded-lg text-xs font-bold tracking-wide uppercase transition-colors ${
             userRole === "admin"
-              ? "bg-[#1e3a8a] text-white shadow-2xs"
-              : "bg-[#f5f0eb] border border-[#ddd4c4] text-[#1e3a8a]"
+              ? "bg-primary text-white shadow-2xs"
+              : "bg-muted border border-border text-primary"
           }`}
         >
           <ShieldCheck
             className={`w-3.5 h-3.5 shrink-0 ${
-              userRole === "admin" ? "text-[#fbbf24]" : "text-[#1e3a8a]"
+              userRole === "admin" ? "text-[#fbbf24]" : "text-primary"
             }`}
           />
           <span className={`ml-2 overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap ${collapsed ? "max-w-0 opacity-0" : "max-w-[140px] opacity-100"}`}>
@@ -377,8 +379,8 @@ export default function Layout({ children }) {
       {/* Desktop Sidebar — collapsible */}
       <aside
         className={`hidden lg:flex ${
-          collapsed ? "w-16" : "w-60"
-        } transition-[width] duration-300 ease-in-out border-r border-border bg-[#fffaf2] flex-col shrink-0 overflow-hidden`}
+          collapsed ? "w-16" : "w-64"
+        } transition-[width] duration-300 ease-in-out border-r border-border bg-card flex-col shrink-0 overflow-hidden`}
       >
         {sidebarContent}
       </aside>
@@ -392,7 +394,7 @@ export default function Layout({ children }) {
             onClick={() => setSidebarOpen(false)}
           />
           {/* Slide-out panel (single X button handled in sidebarContent) */}
-          <aside className="absolute left-0 top-0 bottom-0 w-64 bg-[#fffaf2] border-r border-border flex flex-col shadow-2xl animate-in slide-in-from-left duration-200">
+          <aside className="absolute left-0 top-0 bottom-0 w-64 bg-card border-r border-border flex flex-col shadow-2xl animate-in slide-in-from-left duration-200">
             {sidebarContent}
           </aside>
         </div>
@@ -400,7 +402,7 @@ export default function Layout({ children }) {
 
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <header className="border-b border-border bg-[#fffaf2] h-14 flex items-center justify-between px-4 sm:px-6 shrink-0">
+        <header className="border-b border-border bg-card h-16 flex items-center justify-between px-4 sm:px-6 shrink-0">
           {/* Mobile hamburger & Desktop collapse button */}
           <div className="flex items-center gap-3 sm:gap-4">
             <button
@@ -412,13 +414,13 @@ export default function Layout({ children }) {
             </button>
             <button
               onClick={toggleCollapsed}
-              className="hidden lg:flex items-center justify-center p-1.5 rounded-lg border border-[#ddd4c4] bg-[#f5f0eb] text-[#1a1714] hover:bg-[#e8e0ce] transition-colors shadow-2xs"
+              className="hidden lg:flex items-center justify-center p-1.5 rounded-lg border border-border bg-muted text-foreground hover:bg-secondary transition-colors shadow-2xs"
               title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             >
               {collapsed ? (
-                <PanelLeftOpen className="w-4 h-4 text-[#1e3a8a]" />
+                <PanelLeftOpen className="w-4 h-4 text-primary" />
               ) : (
-                <PanelLeftClose className="w-4 h-4 text-[#1e3a8a]" />
+                <PanelLeftClose className="w-4 h-4 text-primary" />
               )}
             </button>
             <div className="flex items-center gap-2">
@@ -431,7 +433,7 @@ export default function Layout({ children }) {
             <div
               role="status"
               title={sensorHealth.message}
-              className={`flex items-center gap-2 px-2 sm:px-2.5 py-1 rounded-full border text-[11px] font-bold ${HEALTH_TONE[sensorHealth.state].pill}`}
+              className={`flex items-center gap-2 px-2 sm:px-2.5 py-1 rounded-full border text-xs font-bold ${HEALTH_TONE[sensorHealth.state].pill}`}
             >
               <span className="relative flex h-2 w-2 shrink-0">
                 {(sensorHealth.state === "WORKING" || sensorHealth.state === "FAULTY") && (
@@ -439,22 +441,24 @@ export default function Layout({ children }) {
                 )}
                 <span className={`relative inline-flex rounded-full h-2 w-2 ${HEALTH_TONE[sensorHealth.state].dot}`} />
               </span>
-              <span className="hidden sm:inline whitespace-nowrap">
+              <span className="inline whitespace-nowrap">
                 {HEALTH_TONE[sensorHealth.state].pillText}
                 {sensorHealth.state === "OFFLINE" && buoy.lastPacketAt && (
-                  <span className="font-medium opacity-80"> · {lastPacketLabel}</span>
+                  <span className="hidden md:inline font-medium opacity-80"> · {lastPacketLabel}</span>
                 )}
               </span>
             </div>
 
             {/* Quick Hotkey Guide */}
-            <div className="hidden xl:flex items-center gap-1.5 text-[10px] text-[#7c7366] font-medium bg-[#f5f0eb] px-2.5 py-1 rounded-md border border-[#ddd4c4]">
-              <span>Keys:</span>
-              <kbd className="px-1.5 py-0.5 bg-[#fffaf2] border border-[#ddd4c4] rounded shadow-2xs font-mono font-bold text-[#1a1714]">D</kbd> Dashboard
-              <kbd className="px-1.5 py-0.5 bg-[#fffaf2] border border-[#ddd4c4] rounded shadow-2xs font-mono font-bold text-[#1a1714]">T</kbd> Trends
-              <kbd className="px-1.5 py-0.5 bg-[#fffaf2] border border-[#ddd4c4] rounded shadow-2xs font-mono font-bold text-[#1a1714]">A</kbd> Alerts
-              <kbd className="px-1.5 py-0.5 bg-[#fffaf2] border border-[#ddd4c4] rounded shadow-2xs font-mono font-bold text-[#1a1714]">E</kbd> Env
-            </div>
+            <details className="relative hidden xl:block text-xs">
+              <summary className="cursor-pointer font-semibold text-muted-foreground">Keyboard shortcuts</summary>
+              <div className="absolute top-full left-0 z-20 mt-2 flex items-center gap-2 rounded-xl border bg-card p-3 shadow-lg">
+              <kbd className="px-1.5 py-0.5 bg-card border border-border rounded shadow-2xs font-mono font-bold text-foreground">D</kbd> Dashboard
+              <kbd className="px-1.5 py-0.5 bg-card border border-border rounded shadow-2xs font-mono font-bold text-foreground">T</kbd> Trends
+              <kbd className="px-1.5 py-0.5 bg-card border border-border rounded shadow-2xs font-mono font-bold text-foreground">A</kbd> Alerts
+              <kbd className="px-1.5 py-0.5 bg-card border border-border rounded shadow-2xs font-mono font-bold text-foreground">E</kbd> Weather
+              </div>
+            </details>
           </div>
 
           {/* User menu */}
@@ -466,9 +470,9 @@ export default function Layout({ children }) {
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-label="Account menu"
                 aria-expanded={menuOpen}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border bg-[#fffaf2] hover:bg-secondary transition-colors"
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
               >
-                <div className="w-6 h-6 rounded-full bg-[#1e3a8a] text-white flex items-center justify-center font-header font-bold text-xs">
+                <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center font-header font-bold text-xs">
                   {initial}
                 </div>
                 <div className="text-left hidden sm:block">
@@ -482,7 +486,7 @@ export default function Layout({ children }) {
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 mt-1 w-52 rounded-xl border border-border bg-[#fffaf2] shadow-xl py-1 z-50">
+                <div className="absolute right-0 mt-1 w-52 rounded-xl border border-border bg-card shadow-xl py-1 z-50">
                   <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border">
                     Role:{" "}
                     <span className="font-bold ml-1 capitalize text-foreground">{userRole}</span>
@@ -502,7 +506,7 @@ export default function Layout({ children }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto bg-background p-4 sm:p-6">{children}</main>
+        <main className="flex-1 overflow-auto bg-background px-4 py-6 sm:px-8 lg:py-8"><div className="workspace-content mx-auto max-w-[1440px]">{children}</div></main>
       </div>
 
       {/* Logout Confirmation Modal */}
@@ -512,7 +516,7 @@ export default function Layout({ children }) {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setShowLogoutModal(false)}
           />
-          <div role="dialog" aria-modal="true" aria-label="Confirm Logout" className="bg-[#fffaf2] rounded-xl border border-border shadow-2xl w-full max-w-sm mx-4 p-6 relative z-10 animate-in fade-in zoom-in-95 duration-200">
+          <div role="dialog" aria-modal="true" aria-label="Confirm Logout" className="bg-card rounded-xl border border-border shadow-2xl w-full max-w-sm mx-4 p-6 relative z-10 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 rounded-full bg-danger/10 flex items-center justify-center shrink-0">
                 <LogOut className="w-4 h-4 text-danger" />

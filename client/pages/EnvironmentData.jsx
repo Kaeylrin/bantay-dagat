@@ -82,7 +82,7 @@ function WeatherPanel() {
     fetchWeather();
   }, []);
 
-  const isReleaseWeatherSafe =
+  const isCalmWeather =
     data &&
     data.current.wind_speed_10m < 20 &&
     data.current.rain === 0 &&
@@ -95,7 +95,7 @@ function WeatherPanel() {
           <div className="flex items-center gap-2 mb-1">
             <div className="w-3 h-3 rounded-full bg-primary" />
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Open-Meteo Weather Forecast API
+              Open-Meteo forecast
             </span>
           </div>
           <h3 className="text-xl font-header font-bold text-foreground">
@@ -132,12 +132,12 @@ function WeatherPanel() {
         <>
           <div
             className={`rounded-xl p-5 border-2 flex items-center gap-4 ${
-              isReleaseWeatherSafe
+              isCalmWeather
                 ? "bg-safe/10 border-safe/40"
                 : "bg-caution/10 border-caution/40"
             }`}
           >
-            {isReleaseWeatherSafe ? (
+            {isCalmWeather ? (
               <CheckCircle2 className="w-8 h-8 text-safe shrink-0" />
             ) : (
               <AlertTriangle className="w-8 h-8 text-caution shrink-0" />
@@ -145,13 +145,13 @@ function WeatherPanel() {
             <div>
               <p
                 className={`font-header font-bold text-lg ${
-                  isReleaseWeatherSafe ? "text-safe" : "text-caution"
+                  isCalmWeather ? "text-safe" : "text-caution"
                 }`}
               >
                 Weather:{" "}
-                {isReleaseWeatherSafe
-                  ? "Favorable for Turtle Release"
-                  : "Adverse Weather — Hold Release"}
+                {isCalmWeather
+                  ? "Dry with light winds"
+                  : "Check conditions on site"}
               </p>
               <p className="text-sm text-muted-foreground">
                 {WMO_CODES[data.current.weather_code] || "Unknown"} · Wind{" "}
@@ -254,18 +254,18 @@ const TABS = [{ id: "weather", label: "Weather", icon: Cloud }];
 
 export default function EnvironmentData() {
   return (
-    <Layout userEmail="staff@sanctuary.org">
+    <Layout>
       <div className="space-y-4">
         <div className="mb-2">
           <h2 className="text-xl font-header font-bold text-foreground tracking-tight">
-            Environmental Monitoring
+            Local weather
           </h2>
           <p className="text-xs text-muted-foreground">
-            Real-time environmental data for sea turtle pre-release safety assessment.
+            Local weather and forecasts for planning your shift.
           </p>
         </div>
 
-        <div className="bg-background rounded-xl">
+        <div className="rounded-2xl border bg-card p-5 sm:p-7">
           <WeatherPanel />
         </div>
       </div>

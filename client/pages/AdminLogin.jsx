@@ -1,6 +1,7 @@
+import AccessShell from "@/components/AccessShell";
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, ShieldCheck, Lock, Clock } from "lucide-react";
+import { Eye, EyeOff, Clock } from "lucide-react";
 import {
   db,
   auth,
@@ -66,8 +67,12 @@ export default function AdminLogin() {
         if (!active) return;
         const data = snap.val();
         if (data) {
-          const lastAttemptAge = data.lastAttempt ? Date.now() - data.lastAttempt : Infinity;
-          const lockoutExpired = data.lockedUntil ? Date.now() > data.lockedUntil : true;
+          const lastAttemptAge = data.lastAttempt
+            ? Date.now() - data.lastAttempt
+            : Infinity;
+          const lockoutExpired = data.lockedUntil
+            ? Date.now() > data.lockedUntil
+            : true;
 
           if (lockoutExpired && lastAttemptAge > LOCKOUT_MS) {
             setFailCount(0);
@@ -126,9 +131,13 @@ export default function AdminLogin() {
         sessionStorage.removeItem(LOGIN_FLAG_KEY);
         return;
       }
-      
-      const lastAttemptAge = data?.lastAttempt ? Date.now() - data.lastAttempt : Infinity;
-      const lockoutExpired = data?.lockedUntil ? Date.now() > data.lockedUntil : true;
+
+      const lastAttemptAge = data?.lastAttempt
+        ? Date.now() - data.lastAttempt
+        : Infinity;
+      const lockoutExpired = data?.lockedUntil
+        ? Date.now() > data.lockedUntil
+        : true;
 
       if (lockoutExpired && lastAttemptAge > LOCKOUT_MS) {
         actualFailCount = 0;
@@ -247,177 +256,132 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 relative overflow-hidden font-body text-slate-100">
-      {/* Background Image at the bottom */}
-      <div className="absolute bottom-0 left-0 right-0 h-[40vh] pointer-events-none z-0 select-none overflow-hidden">
-        <img
-          src="/background.jpg"
-          alt=""
-          className="w-full h-full object-cover object-bottom opacity-10 translate-y-20 bottom-blend-mask"
-        />
-      </div>
+    <AccessShell>
+      <h1 className="text-2xl font-bold tracking-tight">
+        Administrator sign in
+      </h1>
+      <p className="mb-6 mt-1 text-sm text-muted-foreground">
+        Manage ranger accounts and access.
+      </p>
+      {/* Lockout banner */}
+      {isLocked && (
+        <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-start gap-2">
+          <Clock className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-danger">Account Locked</p>
+            <p className="text-sm text-danger/80">
+              Too many failed attempts. Try again in{" "}
+              <span className="font-mono font-bold">{formatMs(remaining)}</span>
+              .
+            </p>
+          </div>
+        </div>
+      )}
 
-      <div className="w-full max-w-md relative z-10">
-        <div className="text-center mb-6">
-          <img
-            src="/bantay-dagat.png"
-            alt="BantayDagat Logo"
-            className="w-20 h-20 mx-auto mb-3 object-contain drop-shadow-lg"
+      <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
+        <div>
+          <label
+            htmlFor="admin-email"
+            className="block text-sm font-semibold text-foreground  mb-1.5"
+          >
+            Admin Gmail Address
+          </label>
+          <input
+            id="admin-email"
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError("");
+              setHasAttempted(false);
+              setFailCount(0);
+              setLockedUntil(null);
+            }}
+            autoComplete="username"
+            placeholder="admin@gmail.com"
+            disabled={isLoading}
+            className="w-full px-3.5 py-2 rounded-lg border border-border bg-card text-foreground placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors disabled:opacity-60 font-medium"
           />
-          <h1 className="text-2xl font-header font-bold text-white tracking-tight mb-1">
-            BantayDagat
-          </h1>
-          <p className="text-xs text-slate-400 font-medium mb-2">
-            IoT-Based Water Quality Monitoring
-          </p>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/30">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-            Administrative Command Console
-          </span>
         </div>
 
-        {/* Card with Command Security Header */}
-        <div className="bg-slate-900/90 backdrop-blur-md rounded-xl shadow-2xl border border-slate-700/60 overflow-hidden">
-          {/* Top Command Banner */}
-          <div className="bg-[#1e3a8a] text-white px-6 py-3.5 flex items-center justify-between border-b border-slate-700/60">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-amber-400" />
-              <span className="text-xs font-bold uppercase tracking-wider text-white">
-                Admin Command Sign In
-              </span>
-            </div>
-            <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
-              SECURE SESSION
+        <div>
+          <label
+            htmlFor="admin-password"
+            className="block text-sm font-semibold text-foreground  mb-1.5"
+          >
+            Password
+          </label>
+          <div className="relative">
+            <input
+              id="admin-password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              disabled={isLoading || isLocked}
+              className="w-full px-3.5 py-2 pr-10 rounded-lg border border-border bg-card text-foreground placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors disabled:opacity-60 font-medium"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p className="text-sm text-danger">{error}</p>
+          </div>
+        )}
+
+        {/* Attempt indicator */}
+        {hasAttempted && failCount > 0 && !isLocked && (
+          <div className="flex gap-1 items-center">
+            {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
+              <div
+                key={i}
+                className={`h-1 flex-1 rounded-full transition-colors ${
+                  i < failCount ? "bg-red-500" : "bg-slate-700"
+                }`}
+              />
+            ))}
+            <span className="text-sm text-muted-foreground ml-1">
+              {MAX_ATTEMPTS - failCount} left
             </span>
           </div>
+        )}
 
-          <div className="p-6 sm:p-8">
-            {/* Lockout banner */}
-            {isLocked && (
-              <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-start gap-2">
-                <Clock className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-bold text-red-400">Account Locked</p>
-                  <p className="text-xs text-red-400/80">
-                    Too many failed attempts. Try again in{" "}
-                    <span className="font-mono font-bold">
-                      {formatMs(remaining)}
-                    </span>
-                    .
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-4"
-              autoComplete="off"
-            >
-              <div>
-                <label
-                  htmlFor="admin-email"
-                  className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5"
-                >
-                  Admin Gmail Address
-                </label>
-                <input
-                  id="admin-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setError("");
-                    setHasAttempted(false);
-                    setFailCount(0);
-                    setLockedUntil(null);
-                  }}
-                  autoComplete="off"
-                  placeholder="admin@gmail.com"
-                  disabled={isLoading}
-                  className="w-full px-3.5 py-2 rounded-lg border border-slate-700 bg-slate-800/80 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors disabled:opacity-60 font-medium"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="admin-password"
-                  className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5"
-                >
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="admin-password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    disabled={isLoading || isLocked}
-                    className="w-full px-3.5 py-2 pr-10 rounded-lg border border-slate-700 bg-slate-800/80 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors disabled:opacity-60 font-medium"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                  <p className="text-xs text-red-400">{error}</p>
-                </div>
-              )}
-
-              {/* Attempt indicator */}
-              {hasAttempted && failCount > 0 && !isLocked && (
-                <div className="flex gap-1 items-center">
-                  {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-1 flex-1 rounded-full transition-colors ${
-                        i < failCount ? "bg-red-500" : "bg-slate-700"
-                      }`}
-                    />
-                  ))}
-                  <span className="text-[10px] text-slate-400 ml-1">
-                    {MAX_ATTEMPTS - failCount} left
-                  </span>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading || isLocked}
-                className="w-full bg-[#1e3a8a] text-white font-semibold text-xs py-2.5 rounded-lg hover:bg-[#1e3a8a]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-lg shadow-indigo-900/30 border border-indigo-400/20"
-              >
-                {isLoading ? "Authenticating Admin…" : "Sign In as Administrator"}
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <div className="text-center mt-6 space-y-2">
-          <Link
-            to="/login"
-            className="block text-xs font-semibold text-slate-400 hover:text-amber-400 transition-colors"
-          >
-            ← Switch to Ranger / Staff Portal Login
-          </Link>
-          <p className="text-[11px] text-slate-500">
-            Sanctuary Marine Conservation System &mdash; Authorised Access Only
-          </p>
-        </div>
+        <button
+          type="submit"
+          disabled={isLoading || isLocked}
+          className="w-full bg-primary text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-sm"
+        >
+          {isLoading ? "Authenticating Admin…" : "Sign In as Administrator"}
+        </button>
+      </form>
+      <details className="mt-4 text-sm">
+        <summary className="cursor-pointer font-semibold text-primary">
+          Forgot your password?
+        </summary>
+        <p className="mt-2 leading-relaxed text-muted-foreground">
+          Contact the person who manages administrator accounts to request a
+          password reset.
+        </p>
+      </details>
+      <div className="mt-6 border-t pt-4">
+        <Link to="/login" className="text-sm font-semibold text-primary">
+          Ranger sign in
+        </Link>
       </div>
-    </div>
+    </AccessShell>
   );
 }

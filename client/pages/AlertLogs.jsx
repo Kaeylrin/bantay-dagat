@@ -271,15 +271,15 @@ export default function AlertLogs() {
         <div className="mb-5 space-y-3">
           {/* Quick Preset Filter Chips */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-[#7c7366] uppercase tracking-wider mr-1">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">
               Quick Filter:
             </span>
             <button
               onClick={() => setFilterStatus("all")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "all"
-                  ? "bg-[#1e3a8a] text-white"
-                  : "bg-[#fffaf2] border border-[#ddd4c4] text-[#1a1714] hover:bg-[#f5f0eb]"
+                  ? "bg-primary text-white"
+                  : "bg-card border border-border text-foreground hover:bg-muted"
               }`}
             >
               All Logs ({readings.length})
@@ -288,8 +288,8 @@ export default function AlertLogs() {
               onClick={() => setFilterStatus("danger")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "danger"
-                  ? "bg-[#9a3412] text-white"
-                  : "bg-[#9a3412]/10 border border-[#9a3412]/30 text-[#9a3412] hover:bg-[#9a3412]/20"
+                  ? "bg-danger text-white"
+                  : "bg-danger/10 border border-danger/30 text-danger hover:bg-danger/20"
               }`}
             >
               Danger (NO-GO) Only
@@ -298,8 +298,8 @@ export default function AlertLogs() {
               onClick={() => setFilterStatus("caution")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "caution"
-                  ? "bg-[#b45309] text-white"
-                  : "bg-[#b45309]/10 border border-[#b45309]/30 text-[#b45309] hover:bg-[#b45309]/20"
+                  ? "bg-caution text-white"
+                  : "bg-caution/10 border border-caution/30 text-caution hover:bg-caution/20"
               }`}
             >
               Caution Only
@@ -308,8 +308,8 @@ export default function AlertLogs() {
               onClick={() => setFilterStatus("safe")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "safe"
-                  ? "bg-[#15803d] text-white"
-                  : "bg-[#15803d]/10 border border-[#15803d]/30 text-[#15803d] hover:bg-[#15803d]/20"
+                  ? "bg-safe text-white"
+                  : "bg-safe/10 border border-safe/30 text-safe hover:bg-safe/20"
               }`}
             >
               Safe (GO) Only
@@ -319,8 +319,8 @@ export default function AlertLogs() {
               title="Readings where a water probe sent an impossible or missing value"
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "fault"
-                  ? "bg-[#57534e] text-white"
-                  : "bg-[#57534e]/10 border border-[#57534e]/30 text-[#57534e] hover:bg-[#57534e]/20"
+                  ? "bg-slate-600 text-white"
+                  : "bg-slate-600/10 border border-slate-600/30 text-slate-600 hover:bg-slate-600/20"
               }`}
             >
               Sensor Fault
@@ -329,13 +329,13 @@ export default function AlertLogs() {
 
           <div className="flex flex-wrap gap-4 items-center pt-1">
             <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-[#1a1714]">
+              <label className="text-xs font-semibold text-foreground">
                 Status Dropdown:
               </label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-1.5 rounded-lg border border-[#ddd4c4] bg-[#fffaf2] text-[#1a1714] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
+                className="px-3 py-1.5 rounded-lg border border-border bg-card text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="all">All Statuses</option>
                 <option value="safe">GO (All Safe)</option>
@@ -347,21 +347,21 @@ export default function AlertLogs() {
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-[#1a1714]">Sort:</label>
+              <label className="text-xs font-semibold text-foreground">Sort:</label>
               <button
                 onClick={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#ddd4c4] bg-[#fffaf2] text-xs font-medium text-[#1a1714] hover:bg-[#f5f0eb] transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-card text-xs font-medium text-foreground hover:bg-muted transition-colors"
               >
                 Timestamp
                 {sortDir === "desc" ? (
-                  <ChevronDown className="w-3.5 h-3.5 text-[#7c7366]" />
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                 ) : (
-                  <ChevronUp className="w-3.5 h-3.5 text-[#7c7366]" />
+                  <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
                 )}
               </button>
             </div>
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <label className="text-xs font-semibold text-[#1a1714] shrink-0">
+              <label className="text-xs font-semibold text-foreground shrink-0">
                 Search:
               </label>
               <input
@@ -369,7 +369,7 @@ export default function AlertLogs() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search timestamps or values…"
-                className="flex-1 px-3 py-1.5 rounded-lg border border-[#ddd4c4] bg-[#fffaf2] text-[#1a1714] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
+                className="flex-1 px-3 py-1.5 rounded-lg border border-border bg-card text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           </div>
@@ -379,7 +379,7 @@ export default function AlertLogs() {
         <div className="md:hidden space-y-3">
           {connectionState === "connecting" ? (
             <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-xs">
-              <RefreshCw className="w-4 h-4 animate-spin" /> Loading telemetry logs…
+              <RefreshCw className="w-4 h-4 animate-spin" /> Loading saved readings…
             </div>
           ) : sorted.length > 0 ? (
             sorted.map((row) => {
@@ -387,14 +387,14 @@ export default function AlertLogs() {
               return (
                 <div
                   key={row.id}
-                  className="bg-[#fffaf2] rounded-xl border border-[#ddd4c4] shadow-sm p-4"
+                  className="bg-card rounded-xl border border-border shadow-sm p-4"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-[#7c7366] font-mono">
+                    <span className="text-xs text-muted-foreground font-mono">
                       {fmtTs(row.timestamp)}
                     </span>
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase ${statusBadge(overall)}`}
+                      className={`px-2 py-0.5 rounded text-xs font-bold tracking-wide uppercase ${statusBadge(overall)}`}
                     >
                       {statusLabel(overall)}
                     </span>
@@ -407,7 +407,7 @@ export default function AlertLogs() {
                           key={k}
                           className="flex items-center justify-between"
                         >
-                          <span className="text-xs text-[#7c7366]">
+                          <span className="text-xs text-muted-foreground">
                             {m.label}
                           </span>
                           <span
@@ -423,7 +423,7 @@ export default function AlertLogs() {
               );
             })
           ) : (
-            <div className="py-8 text-center text-[#7c7366] text-xs">
+            <div className="py-8 text-center text-muted-foreground text-xs">
               {dataset.length === 0
                 ? "No sensor readings found in the database."
                 : "No readings match the selected filter."}
@@ -432,36 +432,36 @@ export default function AlertLogs() {
         </div>
 
         {/* ── Desktop Table (shown >= md) ── */}
-        <div className="hidden md:block bg-[#fffaf2] rounded-xl border border-[#ddd4c4] shadow-sm overflow-hidden">
+        <div className="hidden md:block bg-card rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[#ddd4c4] bg-[#f5f0eb]">
-                  <th className="px-4 py-3 text-left font-header font-bold uppercase tracking-[1px] text-[#7c7366] text-[10px] whitespace-nowrap">
+                <tr className="border-b border-border bg-muted">
+                  <th className="px-4 py-3 text-left font-header font-bold uppercase tracking-[1px] text-muted-foreground text-xs whitespace-nowrap">
                     Timestamp
                   </th>
-                  <th className="px-4 py-3 text-left font-header font-bold uppercase tracking-[1px] text-[#7c7366] text-[10px] whitespace-nowrap">
+                  <th className="px-4 py-3 text-left font-header font-bold uppercase tracking-[1px] text-muted-foreground text-xs whitespace-nowrap">
                     Overall Status
                   </th>
                   {sensorKeys.map(([k, m]) => (
                     <th
                       key={k}
-                      className="px-4 py-3 text-left font-header font-bold uppercase tracking-[1px] text-[#7c7366] text-[10px] whitespace-nowrap"
+                      className="px-4 py-3 text-left font-header font-bold uppercase tracking-[1px] text-muted-foreground text-xs whitespace-nowrap"
                     >
                       {m.label} ({m.unit})
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#ddd4c4]">
+              <tbody className="divide-y divide-border">
                 {connectionState === "connecting" ? (
                   <tr>
                     <td
                       colSpan={2 + sensorKeys.length}
-                      className="px-6 py-8 text-center text-[#7c7366]"
+                      className="px-6 py-8 text-center text-muted-foreground"
                     >
                       <div className="flex items-center justify-center gap-2">
-                        <RefreshCw className="w-4 h-4 animate-spin text-[#1e3a8a]" /> Loading telemetry dataset…
+                        <RefreshCw className="w-4 h-4 animate-spin text-primary" /> Loading saved readings…
                       </div>
                     </td>
                   </tr>
@@ -471,14 +471,14 @@ export default function AlertLogs() {
                     return (
                       <tr
                         key={row.id}
-                        className="hover:bg-[#ebe4d4]/40 transition-colors"
+                        className="hover:bg-secondary/40 transition-colors"
                       >
-                        <td className="px-4 py-2.5 text-[#1a1714] whitespace-nowrap font-mono text-xs">
+                        <td className="px-4 py-2.5 text-foreground whitespace-nowrap font-mono text-xs">
                           {fmtTs(row.timestamp)}
                         </td>
                         <td className="px-4 py-2.5">
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase ${statusBadge(overall)}`}
+                            className={`px-2 py-0.5 rounded text-xs font-bold tracking-wide uppercase ${statusBadge(overall)}`}
                           >
                             {statusLabel(overall)}
                           </span>
@@ -501,22 +501,22 @@ export default function AlertLogs() {
                   <tr>
                     <td
                       colSpan={2 + sensorKeys.length}
-                      className="px-6 py-10 text-center text-[#7c7366]"
+                      className="px-6 py-10 text-center text-muted-foreground"
                     >
                       <div className="flex flex-col items-center justify-center space-y-2">
-                        <FilterX className="w-8 h-8 text-[#a8a29e] mb-1" />
-                        <p className="text-sm font-bold text-[#1a1714]">
-                          No telemetry records match your current filter
+                        <FilterX className="w-8 h-8 text-muted-foreground mb-1" />
+                        <p className="text-sm font-bold text-foreground">
+                          No readings match your filters
                         </p>
-                        <p className="text-xs text-[#7c7366] max-w-sm">
-                          Try adjusting your status filter chip or clearing your search query.
+                        <p className="text-xs text-muted-foreground max-w-sm">
+                          Choose another status or clear the search.
                         </p>
                         <button
                           onClick={() => {
                             setFilterStatus("all");
                             setSearchQuery("");
                           }}
-                          className="mt-2 px-3.5 py-1.5 rounded-lg border border-[#ddd4c4] bg-[#f5f0eb] text-xs font-bold text-[#1e3a8a] hover:bg-[#e8e0ce] transition-colors"
+                          className="mt-2 px-3.5 py-1.5 rounded-lg border border-border bg-muted text-xs font-bold text-primary hover:bg-secondary transition-colors"
                         >
                           Reset Filters & Search
                         </button>

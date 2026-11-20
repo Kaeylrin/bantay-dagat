@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,89 +6,89 @@
 
 @layer base {
   :root {
-    --background: 40 29% 93%;
-    --foreground: 30 11% 9%;
+    --background: 222 36% 97%;
+    --foreground: 226 35% 15%;
 
-    --card: 39 100% 98%;
-    --card-foreground: 30 11% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 226 35% 15%;
 
-    --popover: 39 100% 98%;
-    --popover-foreground: 30 11% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 226 35% 15%;
 
-    --primary: 224 64% 33%;
+    --primary: 241 66% 54%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 39 33% 88%;
-    --secondary-foreground: 30 11% 9%;
+    --secondary: 230 38% 93%;
+    --secondary-foreground: 226 35% 15%;
 
-    --muted: 30 25% 94%;
-    --muted-foreground: 34 10% 45%;
+    --muted: 225 32% 96%;
+    --muted-foreground: 221 14% 39%;
 
-    --accent: 224 64% 33%;
+    --accent: 241 66% 54%;
     --accent-foreground: 0 0% 100%;
 
     --safe: 142 71% 29%;
     --caution: 36 89% 37%;
-    --danger: 17 88% 34%;
+    --danger: 352 66% 39%;
 
-    --destructive: 17 88% 34%;
+    --destructive: 352 66% 39%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 39 25% 82%;
-    --input: 39 25% 82%;
-    --ring: 224 64% 33%;
+    --border: 225 24% 88%;
+    --input: 225 24% 88%;
+    --ring: 241 66% 54%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 39 100% 98%;
-    --sidebar-foreground: 30 11% 9%;
-    --sidebar-primary: 224 64% 33%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 226 35% 15%;
+    --sidebar-primary: 241 66% 54%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 39 33% 88%;
-    --sidebar-accent-foreground: 30 11% 9%;
-    --sidebar-border: 39 25% 82%;
-    --sidebar-ring: 224 64% 33%;
+    --sidebar-accent: 230 38% 93%;
+    --sidebar-accent-foreground: 226 35% 15%;
+    --sidebar-border: 225 24% 88%;
+    --sidebar-ring: 241 66% 54%;
   }
 
   .dark {
-    --background: 30 11% 9%;
-    --foreground: 39 100% 98%;
+    --background: 226 35% 15%;
+    --foreground: 0 0% 100%;
 
     --card: 26 15% 14%;
-    --card-foreground: 39 100% 98%;
+    --card-foreground: 0 0% 100%;
 
     --popover: 26 15% 14%;
-    --popover-foreground: 39 100% 98%;
+    --popover-foreground: 0 0% 100%;
 
     --primary: 217 91% 60%;
-    --primary-foreground: 30 11% 9%;
+    --primary-foreground: 226 35% 15%;
 
     --secondary: 30 10% 20%;
-    --secondary-foreground: 39 100% 98%;
+    --secondary-foreground: 0 0% 100%;
 
     --muted: 30 10% 20%;
     --muted-foreground: 34 10% 65%;
 
     --accent: 217 91% 60%;
-    --accent-foreground: 30 11% 9%;
+    --accent-foreground: 226 35% 15%;
 
     --safe: 142 70% 45%;
     --caution: 36 89% 55%;
     --danger: 17 88% 50%;
 
     --destructive: 17 88% 50%;
-    --destructive-foreground: 39 100% 98%;
+    --destructive-foreground: 0 0% 100%;
 
     --border: 30 10% 25%;
     --input: 30 10% 25%;
     --ring: 217 91% 60%;
 
     --sidebar-background: 26 15% 12%;
-    --sidebar-foreground: 39 100% 98%;
+    --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 30 11% 9%;
+    --sidebar-primary-foreground: 226 35% 15%;
     --sidebar-accent: 30 10% 20%;
-    --sidebar-accent-foreground: 39 100% 98%;
+    --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 30 10% 25%;
     --sidebar-ring: 217 91% 60%;
   }
@@ -133,4 +133,38 @@
     -webkit-mask-size: 100% 100%;
     mask-size: 100% 100%;
   }
+}
+
+@layer components {
+  .workspace-content h2 {
+    @apply tracking-tight;
+  }
+  .workspace-content > div > div:first-child h2 {
+    @apply text-2xl sm:text-3xl;
+  }
+  .access-shell {
+    @apply min-h-screen bg-background px-4 py-12 flex flex-col items-center justify-center;
+  }
+  .access-card {
+    @apply w-full max-w-md rounded-2xl border border-border bg-card p-6 sm:p-9 shadow-sm;
+  }
+  .access-card h2 {
+    @apply text-2xl font-bold tracking-tight;
+  }
+  .access-card label {
+    @apply text-sm normal-case tracking-normal;
+  }
+  .access-card input {
+    @apply min-h-11 text-base bg-card;
+  }
+  .access-card button[type="submit"] {
+    @apply min-h-11 text-sm;
+  }
+}
+:where(button, a, summary, input, select):focus-visible {
+  outline: 3px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }

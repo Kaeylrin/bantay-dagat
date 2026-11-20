@@ -221,7 +221,7 @@ export default function HistoricalTrends() {
 
   const hasData = chartData.length > 0;
 
-  // ── Data Analytics ─────────────────────────────────────────────────────────
+  // ── Reading summary ─────────────────────────────────────────────────────────
   const analytics = useMemo(() => {
     if (filteredHistory.length === 0) return null;
 
@@ -246,11 +246,11 @@ export default function HistoricalTrends() {
 
     // Readings with a faulty water probe can't be judged — report them separately
     const faultCount = filteredHistory.filter((e) => e.release === "fault" || e.release === "unknown").length;
-    const judged = filteredHistory.length - faultCount || 1;
+    const judged = filteredHistory.length - faultCount;
     const goReadyCount = filteredHistory.filter((e) => RELEASE_META[e.release].allowed).length;
-    const goReadiness = (goReadyCount / judged) * 100;
+    const goReadiness = judged ? (goReadyCount / judged) * 100 : null;
     const allSafeCount = filteredHistory.filter((e) => e.release === "go").length;
-    const pctAllSafe = (allSafeCount / judged) * 100;
+    const pctAllSafe = judged ? (allSafeCount / judged) * 100 : null;
 
     return {
       sensorStats,
@@ -272,7 +272,7 @@ export default function HistoricalTrends() {
 
   const renderStatsTable = (title, statsArray) => (
     <div className="mt-5">
-      <h3 className="text-xs font-bold text-[#1a1714] uppercase tracking-wider mb-2">{title}</h3>
+      <h3 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">{title}</h3>
       <div className="overflow-x-auto rounded-xl border border-secondary">
         <table className="w-full text-sm border-collapse">
           <thead>
@@ -297,7 +297,7 @@ export default function HistoricalTrends() {
                 <tr key={s.key} className="border-b border-secondary/40 last:border-0 hover:bg-secondary/10 transition-colors">
                   <td className="py-3 px-4 font-medium text-foreground">
                     {s.name}
-                    <span className="block text-[10px] text-muted-foreground font-normal">{s.count} valid readings</span>
+                    <span className="block text-xs text-muted-foreground font-normal">{s.count} valid readings</span>
                   </td>
                   <td className={`py-3 px-4 text-center font-mono text-xs ${valueTone(s.key, s.min)}`}>{truncTo2(s.min)} {s.unit}</td>
                   <td className={`py-3 px-4 text-center font-mono text-xs font-bold ${valueTone(s.key, s.avg)}`}>{truncTo2(s.avg)} {s.unit}</td>
@@ -328,10 +328,10 @@ export default function HistoricalTrends() {
           ? `${(Math.floor(Number(val) * 100) / 100).toFixed(2)} ${unit || ""}`
           : "—";
       return (
-        <div className="bg-[#1a1714] text-[#fffaf2] p-2.5 rounded-lg text-xs shadow-xl border border-[#38332e]">
-          <p className="font-semibold text-[#a8a29e] mb-1 text-[11px] font-mono">{label}</p>
+        <div className="bg-foreground text-card p-2.5 rounded-lg text-xs shadow-xl border border-[#38332e]">
+          <p className="font-semibold text-muted-foreground mb-1 text-xs font-mono">{label}</p>
           <p className="font-bold text-white text-sm font-mono tracking-tight">
-            Value: <span className="text-[#f5f0eb]">{formattedVal}</span>
+            Value: <span className="text-muted">{formattedVal}</span>
           </p>
         </div>
       );
@@ -453,7 +453,7 @@ export default function HistoricalTrends() {
               Historical Water Quality Trends
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Visualize sensor patterns and long-term release parameters
+              See how water and air measurements changed over time.
             </p>
           </div>
 
@@ -526,7 +526,7 @@ export default function HistoricalTrends() {
         {connectionState === "connecting" && (
           <div className="mb-6 flex items-center gap-3 bg-secondary/40 border border-secondary rounded-xl px-5 py-3 text-sm text-muted-foreground">
             <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
-            Connecting to Firebase...
+            Loading saved readings…
           </div>
         )}
 
@@ -541,11 +541,11 @@ export default function HistoricalTrends() {
         {connectionState === "live" && !hasData && (
           <div className="mb-6 bg-secondary/30 border border-secondary rounded-xl px-5 py-8 text-center text-muted-foreground text-sm">
             No sensor history found for the selected time range. Data will
-            appear here once the Arduino begins transmitting.
+            appear here when the station sends readings.
           </div>
         )}
 
-        {/* ── Data Analytics Section ─────────────────────────────────────────── */}
+        {/* ── Reading summary Section ─────────────────────────────────────────── */}
         {hasData && analytics && (
           <div className="mb-6 bg-white rounded-xl border border-secondary shadow-sm overflow-hidden">
             {/* Analytics header / toggle */}
@@ -559,7 +559,7 @@ export default function HistoricalTrends() {
                 </span>
                 <div className="text-left">
                   <p className="text-sm font-header font-bold text-foreground">
-                    Data Analytics
+                    Reading summary
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {analytics.totalReadings} readings ·{" "}
@@ -574,11 +574,11 @@ export default function HistoricalTrends() {
 
             {showAnalytics && (
               <div className="border-t border-secondary px-5 pb-5 pt-4">
-                {/* GO-Readiness Score */}
+                {/* Past GO results */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
                   <div className="p-4 rounded-xl bg-secondary/20 border border-secondary/40">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                      GO-Readiness Score
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                      Past GO results
                     </p>
                     <p
                       className={`text-3xl font-header font-bold leading-none ${
@@ -589,10 +589,10 @@ export default function HistoricalTrends() {
                             : "text-danger"
                       }`}
                     >
-                      {analytics.goReadiness.toFixed(1)}%
+                      {analytics.goReadiness === null ? "No usable readings" : analytics.goReadiness.toFixed(1) + "%"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      % of valid readings fit for release (GO or GO with Caution)
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Share of usable readings marked GO or GO with caution.
                     </p>
                     <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
                       <div
@@ -603,13 +603,13 @@ export default function HistoricalTrends() {
                               ? "bg-caution"
                               : "bg-danger"
                         }`}
-                        style={{ width: `${analytics.goReadiness}%` }}
+                        style={{ width: `${analytics.goReadiness ?? 0}%` }}
                       />
                     </div>
                   </div>
 
                   <div className="p-4 rounded-xl bg-secondary/20 border border-secondary/40">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Fully Safe Readings
                     </p>
                     <p
@@ -621,9 +621,9 @@ export default function HistoricalTrends() {
                             : "text-danger"
                       }`}
                     >
-                      {analytics.pctAllSafe.toFixed(1)}%
+                      {analytics.pctAllSafe === null ? "No usable readings" : analytics.pctAllSafe.toFixed(1) + "%"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       % of valid readings where all 3 water parameters were safe
                     </p>
                     <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
@@ -635,24 +635,24 @@ export default function HistoricalTrends() {
                               ? "bg-caution"
                               : "bg-danger"
                         }`}
-                        style={{ width: `${analytics.pctAllSafe}%` }}
+                        style={{ width: `${analytics.pctAllSafe ?? 0}%` }}
                       />
                     </div>
                   </div>
 
                   <div className="p-4 rounded-xl bg-secondary/20 border border-secondary/40">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Total Readings
                     </p>
                     <p className="text-3xl font-header font-bold text-primary leading-none">
                       {analytics.totalReadings}
                     </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Captured during {TIME_LABELS[timeRange].toLowerCase()}
                       {analytics.faultCount > 0 && (
                         <>
                           {" · "}
-                          <span className="font-bold text-[#57534e]">
+                          <span className="font-bold text-slate-600">
                             {analytics.faultCount} with a water-sensor fault
                           </span>{" "}
                           (excluded from the % scores)
@@ -680,40 +680,40 @@ export default function HistoricalTrends() {
         {hasData && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Air Temperature */}
-            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm">
-              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
+            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+              <h3 className="text-base font-header font-bold text-foreground mb-4">
                 Air Temperature (°C)
               </h3>
               {renderChartComponent("air_temperature", "hsl(var(--caution))", [0, 50], "°C")}
             </div>
 
             {/* Water Temperature */}
-            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm">
-              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
+            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+              <h3 className="text-base font-header font-bold text-foreground mb-4">
                 Water Temperature (°C)
               </h3>
               {renderChartComponent("temperature", "hsl(var(--primary))", [0, 40], "°C")}
             </div>
 
             {/* Humidity */}
-            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm">
-              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
+            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+              <h3 className="text-base font-header font-bold text-foreground mb-4">
                 Humidity (%)
               </h3>
               {renderChartComponent("humidity", "hsl(var(--accent))", [0, 100], "%")}
             </div>
 
             {/* pH */}
-            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm">
-              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
+            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+              <h3 className="text-base font-header font-bold text-foreground mb-4">
                 pH Level
               </h3>
               {renderChartComponent("ph", "hsl(var(--caution))", [6, 9], "pH")}
             </div>
 
             {/* Turbidity */}
-            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm lg:col-span-2">
-              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
+            <div className="bg-card rounded-xl p-6 border border-border shadow-sm lg:col-span-2">
+              <h3 className="text-base font-header font-bold text-foreground mb-4">
                 Turbidity (NTU)
               </h3>
               {renderChartComponent("turbidity", "hsl(var(--danger))", [0, 60], "NTU")}

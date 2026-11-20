@@ -40,7 +40,7 @@ const setLatest = (page, values) => page.evaluate((next) => window.__stationTest
 test("paper threshold table and source removal; dashboard toggles and details", async ({ page }) => {
   const errors = await setup(page);
   await page.goto("/dashboard");
-  await expect(page.getByText("Live Sea Signal Active")).toBeVisible();
+  await expect(page.getByText("Station online")).toBeVisible();
   await page.getByRole("button", { name: "Assessment Guide", exact: true }).click();
   const rows = page.getByRole("table").getByRole("row");
   await expect(rows.nth(1)).toContainText("25.00–32.00");
@@ -55,8 +55,8 @@ test("paper threshold table and source removal; dashboard toggles and details", 
   await details.click();
   await expect(details).toHaveAttribute("aria-expanded", "true");
   await details.click();
-  await page.getByRole("button", { name: "Hide Decision Support", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Decision Support", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Hide history", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Show history", exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -65,16 +65,16 @@ test("working → faulty → offline → recovered stays consistent across dashb
   await page.goto("/dashboard");
   await expect(page.getByText("All 5 probes working", { exact: false })).toBeVisible();
   await setLatest(page, { ...valid, sensorAlert: "WTMP pH ERR", turbidity: 60 });
-  await expect(page.getByText("Sensor Probe Fault", { exact: true })).toBeVisible();
-  await expect(page.getByText("HOLD: WATER SENSOR FAULT", { exact: true })).toBeVisible();
+  await expect(page.getByText("Sensor needs attention", { exact: true })).toBeVisible();
+  await expect(page.getByText("Check the water sensors", { exact: true })).toBeVisible();
   await expect(page.getByText("3 of 5 probes working", { exact: false })).toBeVisible();
   await page.evaluate(() => window.__stationTest.set(".info/connected", false));
-  await expect(page.getByText("Signal Disconnected", { exact: false })).toBeVisible();
-  await expect(page.getByText("NO DECISION: STATION OFFLINE", { exact: true })).toBeVisible();
+  await expect(page.getByText("Station offline", { exact: false })).toBeVisible();
+  await expect(page.getByText("Current conditions unknown", { exact: true })).toBeVisible();
   await page.evaluate(() => window.__stationTest.set(".info/connected", true));
   await setLatest(page, valid);
-  await expect(page.getByText("Live Sea Signal Active", { exact: true })).toBeVisible();
-  await expect(page.getByText("GO: SAFE TO RELEASE", { exact: true })).toBeVisible();
+  await expect(page.getByText("Station online", { exact: true })).toBeVisible();
+  await expect(page.getByText("All three water readings are in range", { exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -82,20 +82,20 @@ test("silence ages out without another Firebase event", async ({ page }) => {
   await page.clock.install({ time: new Date(NOW) });
   await setup(page);
   await page.goto("/dashboard");
-  await expect(page.getByText("Live Sea Signal Active")).toBeVisible();
+  await expect(page.getByText("Station online")).toBeVisible();
   await page.clock.fastForward(65_000);
-  await expect(page.getByText("NO DECISION: STATION OFFLINE", { exact: true })).toBeVisible();
+  await expect(page.getByText("Current conditions unknown", { exact: true })).toBeVisible();
   await setLatest(page, { ...valid, timestamp: NOW + 65_000 });
-  await expect(page.getByText("Live Sea Signal Active")).toBeVisible();
+  await expect(page.getByText("Station online")).toBeVisible();
 });
 
 test("empty packets and permission failures never show a live decision", async ({ page }) => {
   const errors = await setup(page, { latest: null, readings: {} });
   await page.goto("/dashboard");
-  await expect(page.getByText("No packet ever received", { exact: true })).toBeVisible();
+  await expect(page.getByText("Waiting for the first reading", { exact: true })).toBeVisible();
   await page.evaluate(() => window.__stationTest.fail("bantaydagat/latest", "Permission denied"));
-  await expect(page.getByText("Database unreachable", { exact: true })).toBeVisible();
-  await expect(page.getByText("GO: SAFE TO RELEASE", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Cannot load station data", { exact: true })).toBeVisible();
+  await expect(page.getByText("All three water readings are in range", { exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -152,13 +152,13 @@ test("alerts filter/search/reset/sort and CSV/PDF exports", async ({ page }) => 
 test("history chart modes, time ranges, analytics and exports", async ({ page }) => {
   const errors = await setup(page);
   await page.goto("/trends");
-  await expect(page.getByText("GO-Readiness Score", { exact: true })).toBeVisible();
+  await expect(page.getByText("Past GO results", { exact: true })).toBeVisible();
   for (const name of ["Area Chart", "Bar Chart", "Line Chart", "Last 7 Days", "Last 30 Days", "Last 24 Hours"]) {
     await page.getByRole("button", { name, exact: true }).click();
   }
-  const analytics = page.getByRole("button", { name: /Data Analytics/ });
+  const analytics = page.getByRole("button", { name: /Reading summary/ });
   await analytics.click();
-  await expect(page.getByText("GO-Readiness Score", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Past GO results", { exact: true })).toHaveCount(0);
   await analytics.click();
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "CSV", exact: true }).click();
@@ -274,10 +274,59 @@ test("admin creation, password reset failure and delete confirmation", async ({ 
 test("disabled account is logged out and invalid reset URL is handled", async ({ page }) => {
   const errors = await setup(page);
   await page.goto("/dashboard");
-  await expect(page.getByText("Live Sea Signal Active")).toBeVisible();
+  await expect(page.getByText("Station online")).toBeVisible();
   await page.evaluate(() => window.__stationTest.set("users/test-user/isActive", false));
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/reset-password");
   await expect(page.getByText(/invalid|missing/i).first()).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test("rangers can distinguish older results, missing trends and an offline station", async ({ page }) => {
+  const ago = Date.now() - 2 * 3_600_000;
+  await setup(page, { latest: { ...valid, timestamp: Date.now() }, readings: {
+    a: { ...valid, timestamp: ago }, b: { ...valid, timestamp: ago + 60000 }
+  } });
+  await page.goto("/dashboard");
+  await expect(page.getByText("All three water readings are in range")).toBeVisible();
+  await expect(page.getByText("Too few readings", {exact: true})).toBeVisible();
+  await expect(page.getByText(/too few recent readings/i)).toBeVisible();
+  await page.getByRole("button", {name: "Explain all three in range"}).click();
+  await expect(page.getByRole("dialog")).toContainText("2 of 2 usable saved readings");
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => window.__stationTest.set(".info/connected", false));
+  await expect(page.getByText("Current conditions unknown")).toBeVisible();
+  await expect(page.getByText("All three water readings are in range")).toHaveCount(0);
+  await page.getByText("Station details", {exact: true}).click();
+  await expect(page.getByText(/Current sensor counts are unavailable/)).toBeVisible();
+});
+
+test("a fresh in-range reading with a worsening history prompts a named recheck", async ({page}) => {
+  const now = Date.now();
+  const readings = Object.fromEntries([16, 18, 20, 22].map((turbidity, i) =>
+    [i, {...valid, timestamp: now - (4-i)*300000, turbidity}]));
+  await setup(page, {latest: {...valid, timestamp: now, turbidity: 24}, readings});
+  await page.goto("/dashboard");
+  await expect(page.getByText(/Recheck Turbidity/)).toBeVisible();
+  await setLatest(page, {...valid, timestamp: now, turbidity: 55});
+  await expect(page.getByText("Water check advises against release")).toBeVisible();
+  await expect(page.getByText(/Recheck Turbidity/)).toHaveCount(0);
+});
+
+test("password help, administrator sign-in and reset screens share the account layout", async ({page}) => {
+  await setup(page, {signedIn: false, role: "admin"});
+  await page.goto("/login");
+  await page.getByText("Forgot your password?").click();
+  await expect(page.getByText(/Ask your administrator to send/)).toBeVisible();
+  await page.getByRole("link",{name:"Administrator sign in"}).click();
+  await expect(page.locator(".access-card")).toContainText("Administrator sign in");
+  await page.locator("#admin-email").fill("admin@gmail.com");
+  await page.locator("#admin-password").fill("TestPassword1!");
+  await page.getByRole("button",{name:"Sign In as Administrator"}).click();
+  await expect(page).toHaveURL(/\/(admin|dashboard)$/);
+  await page.goto("/__/auth/action?mode=resetPassword&oobCode=fixture-reset");
+  await page.getByLabel("New password", {exact:true}).fill("Replacement1!");
+  await page.getByLabel("Confirm new password").fill("Replacement1!");
+  await page.getByRole("button",{name:"Reset Password"}).click();
+  await expect(page.locator(".access-card")).toContainText("Password updated");
 });
