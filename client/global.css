@@ -144,65 +144,59 @@
   }
   .access-shell {
     position: relative;
-    display: grid;
-    place-items: center;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
     min-height: 100svh;
-    padding: 5.25rem 1rem;
-    background: linear-gradient(155deg, #d0e1f247, #6e9ecc24), url("/pawikan-water.jpg") center / cover no-repeat, #9fc0e3;
+    padding: 2rem 1rem clamp(5rem, 12svh, 8rem);
+    background-color: #eaf1f8;
+  }
+  .access-shell::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: auto 0 0;
+    height: clamp(7rem, 24svh, 15rem);
+    pointer-events: none;
+    background: url("/background.jpg") center 84% / cover no-repeat;
+    filter: grayscale(85%);
+    opacity: .12;
+    mask-image: linear-gradient(to bottom, transparent, rgb(0 0 0 / .25) 40%, black);
   }
   .access-shell[data-variant="admin"] {
-    background-image: linear-gradient(120deg, #223a5ebd, #35598280), url("/pawikan-water.jpg");
+    background-color: #d0e1f2;
   }
   .access-brand {
-    position: absolute;
-    top: 1.3rem;
-    left: clamp(1rem, 3vw, 3rem);
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    padding: .2rem .75rem .2rem .3rem;
-    border-radius: .8rem;
-    background: #f3f8fdd9;
-    color: #223a5e;
-    font-size: 1.1rem;
+    display: grid;
+    justify-items: center;
+    gap: .35rem;
+    font-size: 1.35rem;
     font-weight: 700;
+    color: #223a5e;
   }
+  .access-brand img { width: 3rem; height: 3rem; }
   .access-card {
-    width: min(100%, 25.5rem);
-    padding: clamp(1.5rem, 3vw, 2.3rem);
-    border: 1px solid #f3f8fd;
-    border-radius: 1.55rem;
-    background: linear-gradient(170deg, #d0e1f2ed, #f3f8fdf7 38%);
-    box-shadow: 0 14px 50px -22px #223a5e99, inset 0 1px #f3f8fd;
-    backdrop-filter: blur(12px);
+    width: min(100%, 27rem);
+    padding: clamp(1.5rem, 3vw, 2.2rem);
+    border: 1px solid #c2d4e6;
+    border-radius: 1rem;
+    background-color: #f3f8fd;
+    box-shadow: 0 3px 12px rgb(34 58 94 / .06);
     color: #223a5e;
   }
   .access-symbol {
     display: grid;
     place-items: center;
-    width: 3rem;
-    height: 3rem;
-    margin: 0 auto 1rem;
-    border-radius: 1rem;
-    background: linear-gradient(#f3f8fd, #d0e1f2);
-    box-shadow: inset 0 1px #fff, 0 3px 9px #35598226;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin: 0 auto .75rem;
+    border-radius: .75rem;
+    background-color: #d0e1f2;
   }
   .access-card h1, .access-card h1 + p, .access-card > div:last-child { text-align: center; }
-  @media (max-width: 600px) {
-    .access-shell {
-      align-items: start;
-      padding-bottom: 11rem;
-      background-color: #d0e1f2;
-      background-image: linear-gradient(to bottom, #d0e1f2 0%, transparent 45%), url("/pawikan-water.jpg");
-      background-size: 100% 19rem, auto 19rem;
-      background-position: bottom left;
-      background-repeat: no-repeat;
-    }
-    .access-shell[data-variant="admin"] {
-      background-color: #355982;
-      background-image: linear-gradient(to bottom, #355982, #223a5e44), url("/pawikan-water.jpg");
-    }
-  }
   .access-card h2 {
     @apply text-2xl font-bold tracking-tight;
   }
