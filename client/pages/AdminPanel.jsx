@@ -108,7 +108,23 @@ function RangerItem({ ranger }) {
   const handleResetPassword = async () => {
     setBusy(true);
     try {
-      await sendPasswordResetEmail(auth, ranger.email);
+      const idToken = await auth.currentUser.getIdToken();
+      const response = await fetch("/api/admin/send-reset-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ email: ranger.email }),
+      });
+      const data = await response.json();
+      if (response.status === 503 && data.code === "USE_FIREBASE_RESET_EMAIL") {
+        await sendPasswordResetEmail(auth, ranger.email);
+        showFeedback("success", "Backup email sent. It opens the Firebase password reset screen.");
+        return;
+      } else if (!response.ok) {
+        throw new Error(data.error || "Failed to send reset email.");
+      }
 
       showFeedback(
         "success",
@@ -116,10 +132,10 @@ function RangerItem({ ranger }) {
       );
     } catch (e) {
       showFeedback("error", e.message);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
-
 
   const handleDelete = async () => {
     setBusy(true);

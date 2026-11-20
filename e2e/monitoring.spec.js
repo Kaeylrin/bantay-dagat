@@ -259,12 +259,20 @@ test("admin creation, password reset failure and delete confirmation", async ({ 
   await page.getByRole("button", { name: /Create Ranger/ }).click();
   await expect(page.getByText('Ranger "Created Ranger" created successfully.')).toBeVisible();
   const created = page.locator("li").filter({ hasText: "Created Ranger" });
-  await page.evaluate(() => { window.__resetEmailError = "Email service unavailable"; });
+  await page.route("**/api/admin/send-reset-email", route => route.fulfill({status: 500, json: {error: "Email service unavailable"}}));
   await created.getByTitle("Send password reset email").click();
   await expect(created.getByText("Email service unavailable")).toBeVisible();
-  await page.evaluate(() => { delete window.__resetEmailError; });
+  await page.route("**/api/admin/send-reset-email", route => {
+    expect(route.request().postDataJSON()).toEqual({email: "created.ranger@gmail.com"});
+    expect(route.request().headers().authorization).toBe("Bearer test-token");
+    return route.fulfill({json: {success: true}});
+  });
   await created.getByTitle("Send password reset email").click();
   await expect(created.getByText(/Password reset email sent/)).toBeVisible();
+  expect(await page.evaluate(() => window.__resetEmailRecipient)).toBeUndefined();
+  await page.route("**/api/admin/send-reset-email", route => route.fulfill({status: 503, json: {code: "USE_FIREBASE_RESET_EMAIL"}}));
+  await created.getByTitle("Send password reset email").click();
+  await expect(created.getByText(/Backup email sent/)).toBeVisible();
   expect(await page.evaluate(() => window.__resetEmailRecipient)).toBe("created.ranger@gmail.com");
   await created.getByTitle("Delete account").click();
   await created.getByRole("button", { name: "Cancel", exact: true }).click();
