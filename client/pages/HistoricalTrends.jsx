@@ -328,7 +328,7 @@ export default function HistoricalTrends() {
           ? `${(Math.floor(Number(val) * 100) / 100).toFixed(2)} ${unit || ""}`
           : "—";
       return (
-        <div className="bg-foreground text-card p-2.5 rounded-lg text-xs shadow-xl border border-[#38332e]">
+        <div className="bg-foreground text-card p-2.5 rounded-lg text-xs shadow-xl border border-[#223A5E]">
           <p className="font-semibold text-muted-foreground mb-1 text-xs font-mono">{label}</p>
           <p className="font-bold text-white text-sm font-mono tracking-tight">
             Value: <span className="text-muted">{formattedVal}</span>
@@ -343,15 +343,15 @@ export default function HistoricalTrends() {
   const renderChartComponent = (sensorKey, color, domain, unit) => {
     const threshold = THRESHOLDS[sensorKey];
     const yDomain = domain || [0, "auto"];
-    const strokeColor = "#1e3a8a";
+    const strokeColor = "#355982";
 
     return (
       <ResponsiveContainer width="100%" height={250}>
         {graphType === "line" && (
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ebe4d4" />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#7c7366" }} interval="preserveStartEnd" />
-            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#7c7366" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#D0E1F2" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#355982" }} interval="preserveStartEnd" />
+            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#355982" }} />
             <Tooltip content={<CustomTooltip unit={unit} />} />
             {threshold.safeMin !== undefined && (
               <ReferenceLine
@@ -382,13 +382,13 @@ export default function HistoricalTrends() {
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id={`metFill-${sensorKey}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#1e3a8a" stopOpacity={0.28} />
-                <stop offset="100%" stopColor="#1e3a8a" stopOpacity={0.0} />
+                <stop offset="0%" stopColor="#355982" stopOpacity={0.28} />
+                <stop offset="100%" stopColor="#355982" stopOpacity={0.0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ebe4d4" />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#7c7366" }} interval="preserveStartEnd" />
-            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#7c7366" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#D0E1F2" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#355982" }} interval="preserveStartEnd" />
+            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#355982" }} />
             <Tooltip content={<CustomTooltip unit={unit} />} />
             {threshold.safeMin !== undefined && (
               <ReferenceLine
@@ -418,9 +418,9 @@ export default function HistoricalTrends() {
 
         {graphType === "bar" && (
           <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ebe4d4" />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#7c7366" }} interval="preserveStartEnd" />
-            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#7c7366" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#D0E1F2" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#355982" }} interval="preserveStartEnd" />
+            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#355982" }} />
             <Tooltip content={<CustomTooltip unit={unit} />} />
             {threshold.safeMin !== undefined && (
               <ReferenceLine
@@ -436,7 +436,7 @@ export default function HistoricalTrends() {
               strokeDasharray="5 4"
               label={{ value: "Safe Max", position: "right", fontSize: 10, fill: "#9a3412" }}
             />
-            <Bar dataKey={sensorKey} fill="#1e3a8a" radius={[4, 4, 0, 0]} />
+            <Bar dataKey={sensorKey} fill="#355982" radius={[4, 4, 0, 0]} />
           </BarChart>
         )}
       </ResponsiveContainer>

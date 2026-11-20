@@ -115,7 +115,7 @@ export default function ResetPassword() {
   const strength = password ? passwordStrength(password) : null;
 
   return (
-    <AccessShell>
+    <AccessShell recovery>
       {status === "loading" && <p role="status">Checking your reset link…</p>}
       {["error", "invalid"].includes(status) && (
         <>

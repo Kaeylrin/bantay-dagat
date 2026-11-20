@@ -6,26 +6,26 @@
 
 @layer base {
   :root {
-    --background: 212 24% 94%;
-    --foreground: 216 25% 24%;
+    --background: 210 56.667% 88.235%;
+    --foreground: 216 46.875% 25.098%;
 
-    --card: 40 22% 98%;
-    --card-foreground: 216 25% 24%;
+    --card: 210 71.429% 97.255%;
+    --card-foreground: 216 46.875% 25.098%;
 
-    --popover: 40 22% 98%;
-    --popover-foreground: 216 25% 24%;
+    --popover: 210 71.429% 97.255%;
+    --popover-foreground: 216 46.875% 25.098%;
 
-    --primary: 241 66% 54%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 211.95000000000005 42.077% 35.882%;
+    --primary-foreground: 210 71.429% 97.255%;
 
-    --secondary: 230 38% 93%;
-    --secondary-foreground: 216 25% 24%;
+    --secondary: 210 56.667% 88.235%;
+    --secondary-foreground: 216 46.875% 25.098%;
 
-    --muted: 225 32% 96%;
-    --muted-foreground: 221 14% 39%;
+    --muted: 210 56.667% 88.235%;
+    --muted-foreground: 211.95000000000005 42.077% 35.882%;
 
-    --accent: 241 66% 54%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 210.99 37.143% 48.039%;
+    --accent-foreground: 210 71.429% 97.255%;
 
     --safe: 142 71% 29%;
     --caution: 31 85% 31%;
@@ -34,20 +34,20 @@
     --destructive: 352 66% 39%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 225 24% 88%;
-    --input: 225 24% 88%;
-    --ring: 241 66% 54%;
+    --border: 210.88 54.839% 75.686%;
+    --input: 210.88 54.839% 75.686%;
+    --ring: 210.99 37.143% 48.039%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 40 22% 98%;
-    --sidebar-foreground: 216 25% 24%;
-    --sidebar-primary: 241 66% 54%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 230 38% 93%;
-    --sidebar-accent-foreground: 216 25% 24%;
-    --sidebar-border: 225 24% 88%;
-    --sidebar-ring: 241 66% 54%;
+    --sidebar-background: 210 71.429% 97.255%;
+    --sidebar-foreground: 216 46.875% 25.098%;
+    --sidebar-primary: 211.95000000000005 42.077% 35.882%;
+    --sidebar-primary-foreground: 210 71.429% 97.255%;
+    --sidebar-accent: 210 56.667% 88.235%;
+    --sidebar-accent-foreground: 216 46.875% 25.098%;
+    --sidebar-border: 210.88 54.839% 75.686%;
+    --sidebar-ring: 210.99 37.143% 48.039%;
   }
 
   .dark {
@@ -143,69 +143,65 @@
     @apply text-2xl sm:text-3xl;
   }
   .access-shell {
-    --sea: #105d61;
-    --scene: url("/background.jpg");
-    --primary: 181 65% 26%;
-    --ring: 181 55% 33%;
+    position: relative;
     display: grid;
     place-items: center;
     min-height: 100svh;
-    padding: clamp(1rem, 4vw, 4rem);
-    background: #e9efed;
-  }
-  .access-panel {
-    width: min(100%, 62rem);
-    display: grid;
-    grid-template: "brand form" auto "art form" 1fr / .92fr 1fr;
-    overflow: hidden;
-    background: hsl(var(--card));
-    border: 1px solid #cad6d3;
-    border-radius: 1.5rem;
-    box-shadow: 0 18px 55px -30px #244d4f66;
-  }
-  .access-brand {
-    grid-area: brand;
-    display: flex;
-    align-items: center;
-    gap: .7rem;
-    padding: 2rem;
-    background: var(--sea);
-    color: #f1f6f2;
-    font-size: 1.45rem;
-    font-weight: 700;
-    letter-spacing: -.045em;
-  }
-  .access-brand img {
-    padding: .25rem;
-    border-radius: .8rem;
-    background: #f4f6ef;
-  }
-  .access-art {
-    grid-area: art;
-    background: linear-gradient(to bottom, var(--sea), transparent 28%),
-      var(--scene) center bottom / cover no-repeat;
-  }
-  .access-card {
-    grid-area: form;
-    min-width: 0;
-    align-self: center;
-    padding: clamp(2rem, 4vw, 3.75rem);
+    padding: 5.25rem 1rem;
+    background: linear-gradient(155deg, #d0e1f247, #6e9ecc24), url("/pawikan-water.jpg") center / cover no-repeat, #9fc0e3;
   }
   .access-shell[data-variant="admin"] {
-    --sea: #304c6a;
-    --scene: url("/ranger-login-bg.png");
-    --primary: 215 43% 34%;
-    --ring: 215 42% 42%;
-    background: #e7ecf1;
+    background-image: linear-gradient(120deg, #223a5ebd, #35598280), url("/pawikan-water.jpg");
   }
-  @media (max-width: 700px) {
-    .access-panel {
-      max-width: 29rem;
-      grid-template: "brand" auto "form" auto "art" clamp(5rem, 15svh, 8rem) / 1fr;
+  .access-brand {
+    position: absolute;
+    top: 1.3rem;
+    left: clamp(1rem, 3vw, 3rem);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .2rem .75rem .2rem .3rem;
+    border-radius: .8rem;
+    background: #f3f8fdd9;
+    color: #223a5e;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .access-card {
+    width: min(100%, 25.5rem);
+    padding: clamp(1.5rem, 3vw, 2.3rem);
+    border: 1px solid #f3f8fd;
+    border-radius: 1.55rem;
+    background: linear-gradient(170deg, #d0e1f2ed, #f3f8fdf7 38%);
+    box-shadow: 0 14px 50px -22px #223a5e99, inset 0 1px #f3f8fd;
+    backdrop-filter: blur(12px);
+    color: #223a5e;
+  }
+  .access-symbol {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    margin: 0 auto 1rem;
+    border-radius: 1rem;
+    background: linear-gradient(#f3f8fd, #d0e1f2);
+    box-shadow: inset 0 1px #fff, 0 3px 9px #35598226;
+  }
+  .access-card h1, .access-card h1 + p, .access-card > div:last-child { text-align: center; }
+  @media (max-width: 600px) {
+    .access-shell {
+      align-items: start;
+      padding-bottom: 11rem;
+      background-color: #d0e1f2;
+      background-image: linear-gradient(to bottom, #d0e1f2 0%, transparent 45%), url("/pawikan-water.jpg");
+      background-size: 100% 19rem, auto 19rem;
+      background-position: bottom left;
+      background-repeat: no-repeat;
     }
-    .access-brand { padding: 1rem 1.5rem; }
-    .access-card { padding: 1.6rem 1.5rem; }
-    .access-art { background: var(--scene) center 72% / cover no-repeat; }
+    .access-shell[data-variant="admin"] {
+      background-color: #355982;
+      background-image: linear-gradient(to bottom, #355982, #223a5e44), url("/pawikan-water.jpg");
+    }
   }
   .access-card h2 {
     @apply text-2xl font-bold tracking-tight;

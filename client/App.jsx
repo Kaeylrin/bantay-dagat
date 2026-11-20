@@ -7,6 +7,7 @@ import HistoricalTrends from "./pages/HistoricalTrends";
 import AlertLogs from "./pages/AlertLogs";
 import EnvironmentData from "./pages/EnvironmentData";
 import AdminPanel from "./pages/AdminPanel";
+import PasswordHelp from "./pages/PasswordHelp";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { RefreshCw } from "lucide-react";
@@ -93,6 +94,7 @@ export default function App() {
             path="/admin"
             element={<AdminRoute element={<AdminPanel />} />}
           />
+          <Route path="/forgot-password" element={<PasswordHelp />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/__/auth/action" element={<ResetPassword />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

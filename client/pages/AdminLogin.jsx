@@ -368,15 +368,7 @@ export default function AdminLogin() {
           {isLoading ? "Authenticating Admin…" : "Sign In as Administrator"}
         </button>
       </form>
-      <details className="mt-4 text-sm">
-        <summary className="cursor-pointer font-semibold text-primary">
-          Forgot your password?
-        </summary>
-        <p className="mt-2 leading-relaxed text-muted-foreground">
-          Contact the person who manages administrator accounts to request a
-          password reset.
-        </p>
-      </details>
+      <Link to="/forgot-password?role=admin" className="mt-4 block text-center text-sm font-semibold text-primary hover:underline">Forgot your password?</Link>
       <div className="mt-6 border-t pt-4">
         <Link to="/login" className="text-sm font-semibold text-primary">
           Ranger sign in

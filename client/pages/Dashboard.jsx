@@ -390,12 +390,12 @@ export default function Dashboard() {
                 <XAxis dataKey="time" hide />
                 <YAxis hide domain={["dataMin", "dataMax"]} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: "#1a1714", border: "none", borderRadius: "6px", padding: "4px 8px", fontSize: "11px" }}
+                  contentStyle={{ backgroundColor: "#223A5E", border: "none", borderRadius: "6px", padding: "4px 8px", fontSize: "11px" }}
                   itemStyle={{ color: "#ffffff" }}
-                  labelStyle={{ color: "#a8a29e", fontSize: "10px" }}
+                  labelStyle={{ color: "#6E9ECC", fontSize: "10px" }}
                   formatter={(v) => [v != null ? `${truncTo2(v)} ${cfg.unit}` : "—", cfg.name]}
                 />
-                <Line type="monotone" dataKey="value" stroke={isLive ? "#1e3a8a" : "#a8a29e"} dot={false} strokeWidth={1.8} isAnimationActive={false} />
+                <Line type="monotone" dataKey="value" stroke={isLive ? "#355982" : "#6E9ECC"} dot={false} strokeWidth={1.8} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           ) : (

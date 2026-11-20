@@ -318,6 +318,7 @@ test("password help, administrator sign-in and reset screens share the account l
   await page.goto("/login");
   await page.getByText("Forgot your password?").click();
   await expect(page.getByText(/Ask your administrator to send/)).toBeVisible();
+  await page.getByRole("link",{name:"Back to sign in"}).click();
   await page.getByRole("link",{name:"Administrator sign in"}).click();
   await expect(page.locator(".access-card")).toContainText("Administrator sign in");
   await page.locator("#admin-email").fill("admin@gmail.com");

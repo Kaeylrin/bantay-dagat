@@ -336,15 +336,7 @@ export default function Login() {
           {isLoading ? "Authenticating Ranger…" : "Sign In as Ranger"}
         </button>
       </form>
-      <details className="mt-4 text-sm">
-        <summary className="cursor-pointer font-semibold text-primary">
-          Forgot your password?
-        </summary>
-        <p className="mt-2 leading-relaxed text-muted-foreground">
-          Ask your administrator to send a password reset link to your
-          registered email. Open the link to choose a new password.
-        </p>
-      </details>
+      <Link to="/forgot-password" className="mt-4 block text-center text-sm font-semibold text-primary hover:underline">Forgot your password?</Link>
       <div className="mt-6 border-t pt-4">
         <Link to="/admin-login" className="text-sm font-semibold text-primary">
           Administrator sign in
