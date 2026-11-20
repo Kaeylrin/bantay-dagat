@@ -1,0 +1,20 @@
+# Water quality benchmarks for the November 28 presentation
+
+**Research proposal awaiting project approval · 20 November 2026**
+
+The paper currently uses 26–31 °C, pH 7.80–8.30 and 0–25 NTU as its innermost water bands. Present these as project settings. The sources below support environmental comparisons. None of the studies reviewed tested whether crossing one of the dashboard boundaries changes a wild hatchling’s survival after release at Labac.
+
+| Measurement | Candidate for review | Evidence and limits |
+| --- | --- | --- |
+| Water temperature | 26–30 °C | Philippine marine Class SA and SB guideline. Table 3 includes a provision for natural background temperature determined by EMB. Confirm the classification at the sampling point with EMB CALABARZON. [DENR DAO 2016-08, Table 3](https://pab.emb.gov.ph/wp-content/uploads/2017/07/DAO-2016-08-WQG-and-GES.pdf) · [EMB 2024 regional report, Table 4.10, p. 79](https://r6.emb.gov.ph/wp-content/uploads/2025/08/2024-RSoBER-compressed.pdf) |
+| pH | 7.0–8.5 | Same Philippine classes and source. A recent report reproduces the older standard. Its publication date does not establish a new biological threshold. [EMB 2024 report, Table 4.10](https://r6.emb.gov.ph/wp-content/uploads/2025/08/2024-RSoBER-compressed.pdf) |
+| Turbidity | 5 NTU as an external comparison | Indonesia’s 2021 marine biota standard lists 5 NTU in Annex VIII, row 3. Herawati and colleagues used that benchmark at an Indonesian sea turtle landing habitat. They measured water conditions and did not test hatchling survival across turbidity levels. Philippine total suspended solids limits use mg/L and cannot establish an NTU cutoff. [Indonesian regulation, Annex VIII](https://ppkl.menlhk.go.id/website/filebox/999/2107071506439.%20Lampiran%20VIII%20Salinan%20PP%20Nomor%2022%20Tahun%202021.pdf) · [Herawati et al., 2025, Tables 4 and 6](https://journals.ekb.eg/article_415624_314c61e5768aa4e43929af6edb68429c.pdf) |
+| Air temperature and humidity | Report as context | Faddilah et al. studied olive ridley nesting sites and distinguished air humidity, sand humidity and nest conditions. Their measurements describe a hatchery and do not establish release limits for a ranger’s ambient air sensor. [Faddilah et al., 2024](https://ojs.omniakuatika.net/index.php/joa/article/view/1146) |
+
+## What would support a local NTU alert?
+
+1. Check the instrument against a calibrated turbidity meter using paired water samples across the range of interest. The supplied firmware maps its input to approximately 0–30. A danger setting above 50 NTU is unreachable with that conversion. Document the usable range and measurement uncertainty before evaluating any numerical alert. Check pH against buffers and water temperature against a reference thermometer as well.
+2. Compare local measurements across tides, seasons and rain with a comparable, minimally impacted reference site. One published method compares the monitored site’s median with the reference site's 80th percentile for indicators where high values are concerning. The guidance specifies at least two years of consecutive monthly reference data for that method. This is a way to develop a local environmental alert. The dashboard’s last 50 samples cannot substitute for this baseline. [Australian and New Zealand water quality guidance, updated 2023](https://www.waterquality.gov.au/anz-guidelines/monitoring/data-analysis/derivation-assessment)
+3. Ask EMB about the local water classification and ask the responsible conservation staff how an alert should fit their hatchling protocol. A validated water measurement, an applicable environmental guideline and evidence for a release decision answer three different questions. The cited sources do not establish the paper’s caution bands or its rule for combining multiple cautions.
+
+**Suggested defense wording.** “BantayDagat flags readings against the ranges in our project paper. We identified published water quality benchmarks for comparison. Validating the instruments and confirming how those benchmarks apply at Labac are the next steps. Rangers retain responsibility for the release decision.”
