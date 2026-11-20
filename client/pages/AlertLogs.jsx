@@ -44,9 +44,9 @@ const statusBadge = (s) =>
   ({
     safe: "bg-safe/20 text-safe",
     go_caution: "bg-caution/20 text-caution",
-    nogo_caution: "bg-orange-500/20 text-orange-600",
+    nogo_caution: "bg-orange-500/20 text-orange-600 dark:bg-caution/20 dark:text-caution",
     danger: "bg-danger/20 text-danger",
-    fault: "bg-stone-500/15 text-stone-600",
+    fault: "bg-stone-500/15 text-stone-600 dark:bg-secondary dark:text-foreground",
   })[s] ?? "bg-secondary text-muted-foreground";
 
 const statusLabel = (s) =>
@@ -64,7 +64,7 @@ const cellColor = (s) =>
     safe: "text-safe",
     caution: "text-caution font-semibold",
     danger: "text-danger font-bold",
-    fault: "text-stone-400 line-through",
+    fault: "text-stone-400 dark:text-muted-foreground line-through",
   })[s] ?? "text-muted-foreground";
 
 // Truncates to exactly 2 decimal places WITHOUT rounding
