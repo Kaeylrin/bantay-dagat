@@ -1,6 +1,6 @@
 import AccessShell from "@/components/AccessShell";
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Eye,
   EyeOff,
@@ -44,10 +44,26 @@ function passwordStrength(p) {
   return { label: "Strong", color: "bg-safe", width: "100%" };
 }
 
+function getResetCode(search, hash) {
+  let params = new URLSearchParams(search);
+  if (!params.has("oobCode") && hash) {
+    // The password-reset email template can carry Firebase's %LINK% in the fragment.
+    try {
+      const link = new URL(hash.slice(1));
+      if (link.protocol !== "https:" || link.pathname !== "/__/auth/action") return null;
+      params = link.searchParams;
+      if (params.get("mode") !== "resetPassword") return null;
+    } catch {
+      return null;
+    }
+  }
+  if (params.has("mode") && params.get("mode") !== "resetPassword") return null;
+  return params.get("oobCode");
+}
+
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
-  const oobCode = searchParams.get("oobCode");
-  const mode = searchParams.get("mode");
+  const { search, hash } = useLocation();
+  const oobCode = getResetCode(search, hash);
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -83,7 +99,7 @@ export default function ResetPassword() {
           setError(err.message || "Invalid reset link.");
         }
       });
-  }, [oobCode, mode]);
+  }, [oobCode]);
 
   const allRulesPassed = RULES.every((r) => r.test(password));
   const passwordsMatch = password === confirm;

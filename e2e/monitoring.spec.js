@@ -338,6 +338,18 @@ test("password help, administrator sign-in and reset screens share the account l
   await expect(page.locator(".access-card")).toContainText("Password updated");
 });
 
+test("Firebase email template opens the custom form only for password resets", async ({page}) => {
+  await setup(page, {signedIn: false});
+  const link = "https://example.firebaseapp.com/__/auth/action?apiKey=fixture&lang=en&oobCode=fixture-reset";
+  await page.goto("/reset-password#" + link + "&mode=verifyEmail");
+  await expect(page.getByLabel("New password", {exact:true})).toHaveCount(0);
+  await page.goto("/reset-password#" + link + "&mode=resetPassword");
+  await page.getByLabel("New password", {exact:true}).fill("Replacement1!");
+  await page.getByLabel("Confirm new password").fill("Replacement1!");
+  await page.getByRole("button",{name:"Reset Password"}).click();
+  await expect(page.locator(".access-card")).toContainText("Password updated");
+});
+
 test("appearance follows the device and remembers a manual choice across screens", async ({page}) => {
   await setup(page, {signedIn: false});
   await page.emulateMedia({colorScheme: "dark"});
