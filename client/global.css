@@ -142,16 +142,6 @@
   .workspace-content > div > div:first-child h2 {
     @apply text-2xl sm:text-3xl;
   }
-  :root:not(.dark) .access-shell {
-    --primary: 181 65% 26%;
-    --ring: 181 55% 33%;
-    --access-background: #e9efed;
-  }
-  :root:not(.dark) .access-shell[data-variant="admin"] {
-    --primary: 215 43% 34%;
-    --ring: 215 42% 42%;
-    --access-background: #e7ecf1;
-  }
   .access-shell {
     position: relative;
     isolation: isolate;
@@ -162,7 +152,7 @@
     gap: 1.25rem;
     min-height: 100svh;
     padding: 3.75rem 1rem clamp(5rem, 12svh, 8rem);
-    background-color: var(--access-background, hsl(var(--background)));
+    background-color: hsl(var(--background));
   }
   .access-shell::before {
     content: "";
@@ -175,6 +165,16 @@
     filter: grayscale(85%);
     opacity: .12;
     mask-image: linear-gradient(to bottom, transparent, rgb(0 0 0 / .25) 40%, black);
+  }
+  .dark .access-shell::before {
+    inset-inline: 0;
+    margin-inline: auto;
+    width: min(100%, 64rem);
+    bottom: .75rem;
+    background-size: cover;
+    background-position: center 82%;
+    opacity: .13;
+    mask-image: radial-gradient(ellipse closest-side, #000 22%, transparent 100%);
   }
   .access-brand {
     display: grid;

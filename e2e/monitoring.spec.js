@@ -262,6 +262,12 @@ test("admin creation, password reset failure and delete confirmation", async ({ 
   const created = page.locator("li").filter({ hasText: "Created Ranger" });
   await created.getByTitle("Send password reset email").click();
   await expect(created.getByText("Email service unavailable")).toBeVisible();
+  await page.route("**/api/admin/send-reset-email", route => route.fulfill({
+    status: 503, json: { code: "USE_FIREBASE_RESET_EMAIL" }
+  }));
+  await created.getByTitle("Send password reset email").click();
+  await expect(created.getByText(/Password reset email sent/)).toBeVisible();
+  expect(await page.evaluate(() => window.__resetEmailRecipient)).toBe("created.ranger@gmail.com");
   await created.getByTitle("Delete account").click();
   await created.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(created).toBeVisible();
@@ -337,15 +343,15 @@ test("appearance follows the device and remembers a manual choice across screens
   await page.emulateMedia({colorScheme: "dark"});
   await page.goto("/login");
   const root = page.locator("html");
-  const appearance = page.getByRole("combobox", {name: "Appearance"});
+  const appearance = (name) => page.getByRole("radio", {name: new RegExp("^" + name + "$", "i")});
   await expect(root).toHaveClass(/dark/);
-  await expect(appearance).toHaveValue("system");
-  await appearance.selectOption("light");
+  await expect(appearance("system")).toBeChecked();
+  await appearance("light").focus().then(() => page.keyboard.press("Space"));
   await page.reload();
   await expect(root).toHaveClass(/light/);
   await page.getByText("Forgot your password?").click();
-  await expect(appearance).toHaveValue("light");
-  await appearance.selectOption("system");
+  await expect(appearance("light")).toBeChecked();
+  await appearance("system").focus().then(() => page.keyboard.press("Space"));
   await expect(root).toHaveClass(/dark/);
   await page.emulateMedia({colorScheme: "light"});
   await expect(root).toHaveClass(/light/);
@@ -354,7 +360,7 @@ test("appearance follows the device and remembers a manual choice across screens
   await page.locator("#password").fill("TestPassword1!");
   await page.getByRole("button", {name:"Sign In as Ranger"}).click();
   await page.getByRole("button", {name:"Account menu"}).click();
-  await appearance.selectOption("dark");
+  await appearance("dark").focus().then(() => page.keyboard.press("Space"));
   await expect(root).toHaveClass(/dark/);
   await page.goto("/trends");
   await expect(root).toHaveClass(/dark/);

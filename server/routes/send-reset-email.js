@@ -1,9 +1,10 @@
+import { resendKeyRejected } from "../../shared/resetEmail.js";
 import admin from "firebase-admin";
 import { Resend } from "resend";
 
 // Admin SDK should already be initialized in admin-auth.js
 const adminAuth = admin.auth();
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 /**
  * POST /api/admin/send-reset-email
@@ -17,6 +18,7 @@ export async function handleSendResetEmail(req, res) {
   if (!email) {
     return res.status(400).json({ error: "Email is required." });
   }
+  if (!resend) return res.status(503).json({ code: "USE_FIREBASE_RESET_EMAIL" });
 
   try {
     // Generate the Firebase reset link using Admin SDK
@@ -128,7 +130,10 @@ export async function handleSendResetEmail(req, res) {
     });
 
     if (sendError) {
-      console.error("Resend error:", sendError);
+      if (resendKeyRejected(sendError)) {
+        return res.status(503).json({ code: "USE_FIREBASE_RESET_EMAIL" });
+      }
+      console.error("Reset email delivery failed:", sendError.name);
       return res.status(500).json({ error: sendError.message || "Failed to send email." });
     }
 

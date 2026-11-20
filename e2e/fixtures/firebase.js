@@ -56,7 +56,7 @@ export async function signInWithEmailAndPassword(_, email, password) {
   return { user: auth.currentUser };
 }
 export const createRangerInFirebase = async () => "new-ranger";
-export const sendPasswordResetEmail = async () => {};
+export const sendPasswordResetEmail = async (_, email) => { window.__resetEmailRecipient = email; };
 window.__stationTest = {
   set,
   fail(path, message) { for (const entry of subscriptions.get(path) ?? []) entry.error?.({ message }); },

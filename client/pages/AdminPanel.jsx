@@ -118,7 +118,11 @@ function RangerItem({ ranger }) {
         body: JSON.stringify({ email: ranger.email }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to send reset email.");
+      if (response.status === 503 && data.code === "USE_FIREBASE_RESET_EMAIL") {
+        await sendPasswordResetEmail(auth, ranger.email);
+      } else if (!response.ok) {
+        throw new Error(data.error || "Failed to send reset email.");
+      }
 
       showFeedback(
         "success",
