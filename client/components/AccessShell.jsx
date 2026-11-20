@@ -1,15 +1,14 @@
 export default function AccessShell({ children, variant = "ranger" }) {
   return (
     <main className="access-shell" data-variant={variant}>
-      <div className="mb-6 flex items-center gap-3">
-        <img
-          src="/bantay-dagat.png"
-          alt=""
-          className="h-11 w-11 object-contain"
-        />
-        <span className="text-2xl font-bold tracking-tight">BantayDagat</span>
+      <div className="access-panel">
+        <div className="access-brand">
+          <img src="/bantay-dagat.png" alt="" width="42" height="42" />
+          <span>BantayDagat</span>
+        </div>
+        <div className="access-art" aria-hidden="true" />
+        <section className="access-card">{children}</section>
       </div>
-      <section className="access-card">{children}</section>
     </main>
   );
 }

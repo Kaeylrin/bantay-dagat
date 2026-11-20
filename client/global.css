@@ -143,37 +143,69 @@
     @apply text-2xl sm:text-3xl;
   }
   .access-shell {
-    @apply relative isolate min-h-screen px-4 flex flex-col items-center justify-center;
+    --sea: #105d61;
+    --scene: url("/background.jpg");
+    --primary: 181 65% 26%;
+    --ring: 181 55% 33%;
+    display: grid;
+    place-items: center;
     min-height: 100svh;
-    padding-block: clamp(2rem, 6vh, 5rem) clamp(7rem, 22vh, 15rem);
-    background: linear-gradient(150deg, #e0eeeb, #f5f2e9 68%);
+    padding: clamp(1rem, 4vw, 4rem);
+    background: #e9efed;
   }
-  .access-shell::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    pointer-events: none;
-    inset: auto 0 0;
-    height: clamp(9rem, 33vh, 21rem);
-    background: url("/background.jpg") center 76% / cover;
-    opacity: .84;
-    mask-image: linear-gradient(to bottom, transparent, #000 50%);
+  .access-panel {
+    width: min(100%, 62rem);
+    display: grid;
+    grid-template: "brand form" auto "art form" 1fr / .92fr 1fr;
+    overflow: hidden;
+    background: hsl(var(--card));
+    border: 1px solid #cad6d3;
+    border-radius: 1.5rem;
+    box-shadow: 0 18px 55px -30px #244d4f66;
   }
-  .access-shell[data-variant="admin"] {
-    --primary: 219 44% 36%;
-    --ring: 219 44% 42%;
-    padding-block: 3rem;
-    background: radial-gradient(ellipse at top right, #a9c9d6, transparent 65%),
-      linear-gradient(140deg, #e2e9ef, #bdc9da);
+  .access-brand {
+    grid-area: brand;
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    padding: 2rem;
+    background: var(--sea);
+    color: #f1f6f2;
+    font-size: 1.45rem;
+    font-weight: 700;
+    letter-spacing: -.045em;
   }
-  .access-shell[data-variant="admin"]::before {
-    display: none;
+  .access-brand img {
+    padding: .25rem;
+    border-radius: .8rem;
+    background: #f4f6ef;
   }
-  .access-shell[data-variant="admin"] .access-card {
-    border-top: 4px solid hsl(var(--primary));
+  .access-art {
+    grid-area: art;
+    background: linear-gradient(to bottom, var(--sea), transparent 28%),
+      var(--scene) center bottom / cover no-repeat;
   }
   .access-card {
-    @apply w-full max-w-md rounded-2xl border border-border bg-card p-6 sm:p-9 shadow-sm;
+    grid-area: form;
+    min-width: 0;
+    align-self: center;
+    padding: clamp(2rem, 4vw, 3.75rem);
+  }
+  .access-shell[data-variant="admin"] {
+    --sea: #304c6a;
+    --scene: url("/ranger-login-bg.png");
+    --primary: 215 43% 34%;
+    --ring: 215 42% 42%;
+    background: #e7ecf1;
+  }
+  @media (max-width: 700px) {
+    .access-panel {
+      max-width: 29rem;
+      grid-template: "brand" auto "form" auto "art" clamp(5rem, 15svh, 8rem) / 1fr;
+    }
+    .access-brand { padding: 1rem 1.5rem; }
+    .access-card { padding: 1.6rem 1.5rem; }
+    .access-art { background: var(--scene) center 72% / cover no-repeat; }
   }
   .access-card h2 {
     @apply text-2xl font-bold tracking-tight;
