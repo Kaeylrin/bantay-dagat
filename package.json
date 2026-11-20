@@ -9,6 +9,8 @@
     "build:server": "vite build --config vite.config.server.js",
     "start": "node dist/server/node-build.mjs",
     "test": "vitest --run",
+    "test:e2e": "playwright test",
+    "check:secrets": "node scripts/check-secrets.mjs",
     "format.fix": "prettier --write ."
   },
   "dependencies": {
@@ -21,6 +23,7 @@
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.1",
+    "@playwright/test": "^1.64.1",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",

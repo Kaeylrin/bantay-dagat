@@ -5,6 +5,7 @@ import {
   onValue,
   query,
   orderByChild,
+  startAt,
   limitToLast,
   off,
   push,
@@ -20,6 +21,8 @@ import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
   setPersistence,
   browserSessionPersistence,
 } from "firebase/auth";
@@ -40,18 +43,7 @@ const auth = getAuth(app);
 
 setPersistence(auth, browserSessionPersistence).catch(() => {});
 
-export function mapArduinoReading(raw) {
-  if (!raw) return null;
-  return {
-    air_temperature: raw.airTemp ?? null,
-    temperature: raw.waterTemp ?? null,
-    humidity: raw.humidity ?? null,
-    ph: raw.pH ?? null,
-    turbidity: raw.turbidity ?? null,
-    status: raw.status ?? null,
-    timestamp: raw.timestamp ?? null,
-  };
-}
+export { mapArduinoReading } from "./telemetry";
 
 export const DB_PATHS = {
   LATEST: "bantaydagat/latest",
@@ -90,6 +82,7 @@ export {
   onValue,
   query,
   orderByChild,
+  startAt,
   limitToLast,
   off,
   push,
@@ -101,4 +94,6 @@ export {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
 };

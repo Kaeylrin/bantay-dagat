@@ -18,6 +18,9 @@ export default defineConfig(({ mode }) => ({
     outDir: "dist/spa",
   },
   plugins: [react(), expressPlugin()],
+  test: {
+    include: ["client/**/*.test.{js,jsx}"],
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./client"),

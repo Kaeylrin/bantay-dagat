@@ -1,6 +1,7 @@
+import AccessShell from "@/components/AccessShell";
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, ShieldAlert, Lock, Clock, Radio } from "lucide-react";
+import { Eye, EyeOff, Clock } from "lucide-react";
 import {
   db,
   auth,
@@ -66,8 +67,12 @@ export default function Login() {
         if (!active) return;
         const data = snap.val();
         if (data) {
-          const lastAttemptAge = data.lastAttempt ? Date.now() - data.lastAttempt : Infinity;
-          const lockoutExpired = data.lockedUntil ? Date.now() > data.lockedUntil : true;
+          const lastAttemptAge = data.lastAttempt
+            ? Date.now() - data.lastAttempt
+            : Infinity;
+          const lockoutExpired = data.lockedUntil
+            ? Date.now() > data.lockedUntil
+            : true;
 
           if (lockoutExpired && lastAttemptAge > LOCKOUT_MS) {
             setFailCount(0);
@@ -126,9 +131,13 @@ export default function Login() {
         sessionStorage.removeItem(LOGIN_FLAG_KEY);
         return;
       }
-      
-      const lastAttemptAge = data?.lastAttempt ? Date.now() - data.lastAttempt : Infinity;
-      const lockoutExpired = data?.lockedUntil ? Date.now() > data.lockedUntil : true;
+
+      const lastAttemptAge = data?.lastAttempt
+        ? Date.now() - data.lastAttempt
+        : Infinity;
+      const lockoutExpired = data?.lockedUntil
+        ? Date.now() > data.lockedUntil
+        : true;
 
       if (lockoutExpired && lastAttemptAge > LOCKOUT_MS) {
         actualFailCount = 0;
@@ -217,166 +226,122 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Image at the bottom */}
-      <div className="absolute bottom-0 left-0 right-0 h-[40vh] pointer-events-none z-0 select-none overflow-hidden">
-        <img
-          src="/background.jpg"
-          alt=""
-          className="w-full h-full object-cover object-bottom opacity-20 translate-y-20 bottom-blend-mask"
-        />
-      </div>
+    <AccessShell>
+      <h1 className="text-2xl font-bold tracking-tight">Ranger sign in</h1>
+      <p className="mb-6 mt-1 text-sm text-muted-foreground">
+        Open the monitoring dashboard for your shift.
+      </p>
+      {/* Lockout banner */}
+      {isLocked && (
+        <div className="mb-4 bg-danger/10 border border-danger/30 rounded-lg p-3 flex items-start gap-2">
+          <Clock className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-danger">Account Locked</p>
+            <p className="text-sm text-danger/80">
+              Too many failed attempts. Try again in{" "}
+              <span className="font-mono font-bold">{formatMs(remaining)}</span>
+              .
+            </p>
+          </div>
+        </div>
+      )}
 
-      <div className="w-full max-w-md relative z-10">
-        <div className="text-center mb-6">
-          <img
-            src="/bantay-dagat.png"
-            alt="BantayDagat Logo"
-            className="w-20 h-20 mx-auto mb-3 object-contain drop-shadow-sm"
+      <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
+        <div>
+          <label
+            htmlFor="email"
+            className="block text-sm font-semibold text-foreground  mb-1.5"
+          >
+            Gmail Address
+          </label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError("");
+              setHasAttempted(false);
+              setFailCount(0);
+              setLockedUntil(null);
+            }}
+            autoComplete="username"
+            placeholder="ranger@gmail.com"
+            disabled={isLoading}
+            className="w-full px-3.5 py-2 rounded-lg border border-border bg-muted text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors disabled:opacity-60 font-medium"
           />
-          <h1 className="text-2xl font-header font-bold text-[#1a1714] tracking-tight mb-1">
-            BantayDagat
-          </h1>
-          <p className="text-xs text-[#7c7366] font-medium mb-2">
-            IoT-Based Water Quality Monitoring
-          </p>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#15803d]/10 text-[#15803d] border border-[#15803d]/30">
-            <Radio className="w-3.5 h-3.5 text-[#15803d]" />
-            Field Operational Telemetry Access
-          </span>
         </div>
 
-        <div className="bg-[#fffaf2] rounded-xl shadow-sm border border-[#ddd4c4] p-6 sm:p-8">
-          <h2 className="text-base font-header font-bold text-[#1a1714] mb-6 flex items-center gap-2">
-            <Radio className="w-4 h-4 text-[#1e3a8a]" />
-            Ranger Staff Sign In
-          </h2>
-
-          {/* Lockout banner */}
-          {isLocked && (
-            <div className="mb-4 bg-[#9a3412]/10 border border-[#9a3412]/30 rounded-lg p-3 flex items-start gap-2">
-              <Clock className="w-4 h-4 text-[#9a3412] shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-[#9a3412]">Account Locked</p>
-                <p className="text-xs text-[#9a3412]/80">
-                  Too many failed attempts. Try again in{" "}
-                  <span className="font-mono font-bold">
-                    {formatMs(remaining)}
-                  </span>
-                  .
-                </p>
-              </div>
-            </div>
-          )}
-
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-4"
-            autoComplete="off"
+        <div>
+          <label
+            htmlFor="password"
+            className="block text-sm font-semibold text-foreground  mb-1.5"
           >
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-xs font-semibold text-[#1a1714] uppercase tracking-wider mb-1.5"
-              >
-                Gmail Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setError("");
-                  setHasAttempted(false);
-                  setFailCount(0);
-                  setLockedUntil(null);
-                }}
-                autoComplete="off"
-                placeholder="ranger@gmail.com"
-                disabled={isLoading}
-                className="w-full px-3.5 py-2 rounded-lg border border-[#ddd4c4] bg-[#f5f5f4] text-[#1a1714] placeholder-[#a8a29e] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:border-transparent transition-colors disabled:opacity-60 font-medium"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-xs font-semibold text-[#1a1714] uppercase tracking-wider mb-1.5"
-              >
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  disabled={isLoading || isLocked}
-                  className="w-full px-3.5 py-2 pr-10 rounded-lg border border-[#ddd4c4] bg-[#f5f5f4] text-[#1a1714] placeholder-[#a8a29e] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:border-transparent transition-colors disabled:opacity-60 font-medium"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7c7366] hover:text-[#1a1714]"
-                  tabIndex={-1}
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-[#9a3412]/10 border border-[#9a3412]/30 rounded-lg p-3">
-                <p className="text-xs text-[#9a3412]">{error}</p>
-              </div>
-            )}
-
-            {/* Attempt indicator */}
-            {hasAttempted && failCount > 0 && !isLocked && (
-              <div className="flex gap-1 items-center">
-                {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`h-1 flex-1 rounded-full transition-colors ${
-                      i < failCount ? "bg-[#9a3412]" : "bg-[#ddd4c4]"
-                    }`}
-                  />
-                ))}
-                <span className="text-[10px] text-[#7c7366] ml-1">
-                  {MAX_ATTEMPTS - failCount} left
-                </span>
-              </div>
-            )}
-
-            <button
-              type="submit"
+            Password
+          </label>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              placeholder="••••••••"
               disabled={isLoading || isLocked}
-              className="w-full bg-[#1e3a8a] text-white font-semibold text-xs py-2.5 rounded-lg hover:bg-[#1e3a8a]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-sm"
+              className="w-full px-3.5 py-2 pr-10 rounded-lg border border-border bg-muted text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors disabled:opacity-60 font-medium"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={showPassword ? "Hide password" : "Show password"}
             >
-              {isLoading ? "Authenticating Ranger…" : "Sign In as Ranger"}
+              {showPassword ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
             </button>
-          </form>
+          </div>
         </div>
 
-        <div className="text-center mt-6 space-y-2">
-          <Link
-            to="/admin-login"
-            className="block text-xs font-semibold text-[#7c7366] hover:text-[#1e3a8a] transition-colors"
-          >
-            Switch to Administrator Console Login →
-          </Link>
-          <p className="text-[11px] text-[#a8a29e]">
-            Sanctuary Marine Conservation System &mdash; Authorised Access Only
-          </p>
-        </div>
+        {error && (
+          <div className="bg-danger/10 border border-danger/30 rounded-lg p-3">
+            <p className="text-sm text-danger">{error}</p>
+          </div>
+        )}
+
+        {/* Attempt indicator */}
+        {hasAttempted && failCount > 0 && !isLocked && (
+          <div className="flex gap-1 items-center">
+            {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
+              <div
+                key={i}
+                className={`h-1 flex-1 rounded-full transition-colors ${
+                  i < failCount ? "bg-danger" : "bg-border"
+                }`}
+              />
+            ))}
+            <span className="text-sm text-muted-foreground ml-1">
+              {MAX_ATTEMPTS - failCount} left
+            </span>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={isLoading || isLocked}
+          className="w-full bg-primary text-primary-foreground font-semibold text-sm py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-sm"
+        >
+          {isLoading ? "Authenticating Ranger…" : "Sign In as Ranger"}
+        </button>
+      </form>
+      <Link to="/forgot-password" className="mt-4 block text-center text-sm font-semibold text-primary hover:underline">Forgot your password?</Link>
+      <div className="mt-6 border-t pt-4">
+        <Link to="/admin-login" className="text-sm font-semibold text-primary">
+          Administrator sign in
+        </Link>
       </div>
-    </div>
+    </AccessShell>
   );
 }

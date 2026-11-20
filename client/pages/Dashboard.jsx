@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import * as Popover from "@radix-ui/react-popover";
 import Layout from "@/components/Layout";
 import {
   Thermometer,
@@ -15,519 +16,391 @@ import {
   TrendingDown,
   Minus,
   Target,
+  PauseCircle,
+  Clock,
+  ClipboardCheck,
+  BookOpen,
+  XCircle,
 } from "lucide-react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import {
   db,
   ref,
   query,
   limitToLast,
   onValue,
-  off,
   mapArduinoReading,
   DB_PATHS,
 } from "@/lib/firebase";
+import { useBuoy } from "@/lib/useBuoy";
+import {
+  SENSORS,
+  RELEASE_META,
+  WATER_KEYS,
+  evaluateReading,
+  releaseStatus as computeReleaseStatus,
+  analyzeTrend,
+  recentConsistency,
+  formatAge,
+  truncTo2,
+} from "@/lib/sensors";
 
-// Truncates to exactly 2 decimal places WITHOUT rounding
-// e.g. 27.456 → "27.45", 27.999 → "27.99"
-function truncTo2(value) {
-  if (value === null || value === undefined) return "--";
-  return (Math.floor(Number(value) * 100) / 100).toFixed(2);
-}
+const ICONS = {
+  air_temperature: Wind,
+  temperature: Thermometer,
+  humidity: Droplets,
+  ph: TestTube,
+  turbidity: Eye,
+};
 
-const SENSOR_CONFIG = [
-  {
-    key: "air_temperature",
-    name: "Air Temp",
-    unit: "°C",
-    type: "environment",
-    icon: Wind,
-    threshold: { safe: [25, 32], caution: [22, 35] },
-    description:
-      "Ambient temperature above the water surface. Affects the turtle's thermal regulation immediately upon release. The ideal range ensures pawikans are neither heat-stressed nor chilled during the transition to open water.",
-  },
-  {
-    key: "temperature",
-    name: "Water Temp",
-    unit: "°C",
-    type: "water",
-    icon: Thermometer,
-    threshold: { safe: [26, 31], caution: [24, 33] },
-    description:
-      "Sea surface temperature — the most critical parameter for pawikan survival. All five local species require warm, stable water for metabolic function, immune response, and successful navigation post-release.",
-  },
-  {
-    key: "humidity",
-    name: "Humidity",
-    unit: "%",
-    type: "environment",
-    icon: Droplets,
-    threshold: { safe: [65, 85], caution: [55, 90] },
-    description:
-      "Relative atmospheric humidity at the release site. Optimal levels prevent dehydration during the critical transition from the holding facility to open water, supporting healthy mucous membrane function.",
-  },
-  {
-    key: "ph",
-    name: "pH Level",
-    unit: "pH",
-    type: "water",
-    icon: TestTube,
-    threshold: { safe: [7.8, 8.3], caution: [7.5, 8.5] },
-    description:
-      "Seawater acidity/alkalinity level. Values outside the safe range (slightly alkaline) cause physiological stress, impair immune function, and can disrupt a pawikan's magnetoreception-based navigation instinct.",
-  },
-  {
-    key: "turbidity",
-    name: "Turbidity",
-    unit: "NTU",
-    type: "water",
-    icon: Eye,
-    threshold: { safe: [0, 25], caution: [0, 50] },
-    description:
-      "Water clarity measured in NTU (Nephelometric Turbidity Units). High turbidity from suspended sediment or algal blooms can disorient turtles, mask underwater hazards, and reduce post-release feeding success.",
-  },
-];
+// Trend window: readings within this span before the newest one
+const TREND_WINDOW_MS = 60 * 60 * 1000;
+// Project-defined change that prompts the ranger to verify the temperature.
+const RAPID_TEMP_DELTA = 1.0;
 
-function deriveStatus(value, threshold) {
-  if (value === null || value === undefined) return "unknown";
-  if (value < threshold.caution[0] || value > threshold.caution[1])
-    return "danger";
-  if (value < threshold.safe[0] || value > threshold.safe[1]) return "caution";
-  return "safe";
-}
+// Shared visual states for sensor cards and labels.
+const TONE = {
+  safe: { text: "text-safe", bg: "bg-safe/10", border: "border-safe/30", solid: "bg-safe" },
+  caution: { text: "text-caution", bg: "bg-caution/10", border: "border-caution/30", solid: "bg-caution" },
+  warn: { text: "text-caution", bg: "bg-[#c2410c]/10", border: "border-[#c2410c]/30", solid: "bg-[#c2410c]" },
+  danger: { text: "text-danger", bg: "bg-danger/10", border: "border-danger/40", solid: "bg-danger" },
+  fault: { text: "text-muted-foreground", bg: "bg-slate-600/10", border: "border-slate-600/30", solid: "bg-slate-600" },
+  muted: { text: "text-muted-foreground", bg: "bg-secondary/40", border: "border-border", solid: "bg-muted-foreground" },
+};
 
-// Compute trend from session history: rising / falling / stable / insufficient
-function computeTrend(data, key) {
-  const values = data
-    .map((d) => d[key])
-    .filter((v) => v !== null && v !== undefined);
-  if (values.length < 4) return "insufficient";
-  const half = Math.floor(values.length / 2);
-  const firstAvg = values.slice(0, half).reduce((a, b) => a + b, 0) / half;
-  const secondSlice = values.slice(half);
-  const secondAvg = secondSlice.reduce((a, b) => a + b, 0) / secondSlice.length;
-  const relChange = Math.abs(secondAvg - firstAvg) / (Math.abs(firstAvg) || 1);
-  if (relChange < 0.008) return "stable"; // < 0.8% relative change → stable
-  return secondAvg > firstAvg ? "rising" : "falling";
-}
+const SENSOR_STATUS_TONE = {
+  safe: "safe",
+  caution: "caution",
+  danger: "danger",
+  fault: "fault",
+  unknown: "muted",
+  offline: "muted",
+};
 
-// Determines if a trend is improving (toward safe) or worsening (away from safe)
-function trendImpact(threshold, value, trend) {
-  if (!trend || trend === "stable" || trend === "insufficient" || value === null)
-    return "neutral";
-  const [sMin, sMax] = threshold.safe;
-  if (value < sMin) return trend === "rising" ? "improving" : "worsening";
-  if (value > sMax) return trend === "falling" ? "improving" : "worsening";
-  // Inside safe range — flag if trending toward the boundary edge
-  const midpoint = (sMin + sMax) / 2;
-  if (trend === "rising" && value > midpoint) return "watch";
-  if (trend === "falling" && value < midpoint) return "watch";
-  return "neutral";
-}
-
-// Plain-language release recommendation based on status + trends
-function generateRecommendation(sensors, trends, releaseStatus) {
-  const enriched = sensors.map((s) => ({
-    ...s,
-    trend: trends[s.key],
-    impact: trendImpact(s.threshold, s.value, trends[s.key]),
-  }));
-  const worsening = enriched.filter((s) => s.impact === "worsening");
-  const improving = enriched.filter((s) => s.impact === "improving");
-
-  if (releaseStatus === "go") {
-    if (worsening.length === 0)
-      return "All water quality parameters are within safe thresholds and holding steady. Conditions are currently optimal — pawikan release is recommended.";
-    return `Water conditions are safe, but ${worsening.map((s) => s.name).join(", ")} ${worsening.length === 1 ? "is" : "are"} drifting toward caution levels. Consider initiating release soon before water conditions shift.`;
-  }
-  if (releaseStatus === "go_caution") {
-    if (improving.length > 0)
-      return `One water parameter is in caution range, but ${improving.map((s) => s.name).join(", ")} ${improving.length === 1 ? "is" : "are"} trending back toward safe levels. A brief wait may improve conditions before release.`;
-    return "Release is permissible but proceed with caution. One water parameter is near its caution boundary — ensure a ranger is on-site for monitoring during and after release.";
-  }
-  if (releaseStatus === "nogo_caution") {
-    if (improving.length >= 2)
-      return "Multiple water parameters are outside safe thresholds but trending toward improvement. Hold release and reassess after the next 2–3 readings.";
-    return "Two or more water parameters are in suboptimal ranges. Postpone release and continue monitoring. Notify the senior ranger if water conditions do not improve within the hour.";
-  }
-  if (releaseStatus === "danger")
-    return "Critical water quality values detected. Release is strictly prohibited. Ensure the holding facility remains stable and immediately alert senior staff.";
-  return "Awaiting sufficient water telemetry data to generate a release recommendation.";
-}
-
-const statusCard = (s) =>
-  ({
-    safe: "text-safe border-safe/20 bg-safe/5",
-    caution: "text-caution border-caution/20 bg-caution/5",
-    danger: "text-danger border-danger/20 bg-danger/5",
-  })[s] ?? "text-muted-foreground border-secondary bg-secondary/10";
-
-const statusBadge = (s) =>
-  ({
-    safe: "bg-safe/20 text-safe",
-    caution: "bg-caution/20 text-caution",
-    danger: "bg-danger/20 text-danger",
-  })[s] ?? "bg-secondary text-muted-foreground";
-
-const lineColor = (s) =>
-  ({
-    safe: "hsl(var(--safe))",
-    caution: "hsl(var(--caution))",
-    danger: "hsl(var(--danger))",
-  })[s] ?? "hsl(var(--muted-foreground))";
-
-// Trend display metadata
 const TREND_META = {
-  rising: { icon: TrendingUp, label: "Rising", color: "text-blue-500" },
-  falling: { icon: TrendingDown, label: "Falling", color: "text-indigo-400" },
-  stable: { icon: Minus, label: "Stable", color: "text-muted-foreground" },
-  insufficient: {
-    icon: Minus,
-    label: "Not enough data",
-    color: "text-muted-foreground",
-  },
+  rising: { icon: TrendingUp, label: "Rising" },
+  falling: { icon: TrendingDown, label: "Falling" },
+  stable: { icon: Minus, label: "Stable" },
+  insufficient: { icon: Minus, label: "Not enough data" },
 };
 
 const IMPACT_META = {
-  improving: { label: "Improving ↗", color: "text-safe" },
-  worsening: { label: "Worsening ↘", color: "text-danger" },
-  watch: { label: "Watch", color: "text-caution" },
-  neutral: { label: "Holding steady", color: "text-muted-foreground" },
+  improving: { label: "Improving", cls: "text-safe" },
+  worsening: { label: "Worsening", cls: "text-danger" },
+  watch: { label: "Approaching limit", cls: "text-caution" },
 };
 
-// Per-sensor alert contribution label (individual sensor → release implication)
-function sensorAlertLabel(status) {
-  if (status === "safe")
-    return { text: "Supports GO", cls: "text-safe" };
+function describeValue(cfg, value, status) {
+  const [sMin, sMax] = cfg.threshold.safe;
+  const [cMin, cMax] = cfg.threshold.caution;
+  if (status === "safe") return `within safe ${sMin}–${sMax} ${cfg.unit}`;
   if (status === "caution")
-    return { text: "Contributes to Caution", cls: "text-caution" };
+    return value > sMax ? `above safe max ${sMax} ${cfg.unit}` : `below safe min ${sMin} ${cfg.unit}`;
   if (status === "danger")
-    return { text: "Triggers NO-GO", cls: "text-danger" };
-  return { text: "No Data", cls: "text-muted-foreground" };
+    return value > cMax ? `above danger limit ${cMax} ${cfg.unit}` : `below danger limit ${cMin} ${cfg.unit}`;
+  return "";
+}
+
+function SummaryLabel({ label, explanation }) {
+  return (
+    <div className="text-sm font-medium text-foreground flex items-center gap-1">
+      <span>{label}</span>
+      <Popover.Root>
+        <Popover.Trigger asChild>
+          <button
+            type="button"
+            aria-label={`Explain ${label.toLowerCase()}`}
+            title={explanation}
+            className="inline-flex shrink-0 items-center justify-center rounded-full p-1 text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            <Info className="h-3 w-3" aria-hidden="true" />
+          </button>
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content
+            side="top"
+            sideOffset={6}
+            collisionPadding={12}
+            aria-label={label}
+            className="z-[110] w-64 max-w-[calc(100vw-24px)] rounded-lg border border-border bg-card p-3 text-left text-xs leading-relaxed text-foreground shadow-lg"
+            onOpenAutoFocus={(event) => event.preventDefault()}
+          >
+            <p className="mb-1 font-semibold">{label}</p>
+            <p>{explanation}</p>
+            <Popover.Arrow className="fill-card" />
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    </div>
+  );
+}
+
+function formatEta(min) {
+  if (min === null || min === undefined) return null;
+  if (min < 60) return `~${Math.max(1, min)} min`;
+  return `~${(min / 60).toFixed(1)} h`;
+}
+
+function rangerAdvice(status, factors, trends, consistency, rapidTemp) {
+  const names = (level) => factors.filter((f) => f.status === level).map((f) => f.cfg.name).join(", ");
+  switch (status) {
+    case "offline":
+      return ["Current conditions unknown", "Check the station connection or measure the water on site."];
+    case "unknown":
+      return ["Waiting for water readings", "Check that the station is sending readings."];
+    case "fault":
+      return ["Check the water sensors", `Verify ${names("fault")} with a handheld meter before using this water check.`];
+    case "danger":
+      return ["Water check advises against release", `Tell the ranger in charge. Check ${names("danger")} on site.`];
+    case "nogo_caution":
+      return ["Several readings need attention", `Review ${names("caution")} with the ranger in charge.`];
+  }
+  const label = status === "go_caution" ? "One reading needs attention" : "All three water readings are in range";
+  const watch = factors.filter((f) => ["watch", "worsening"].includes(trends[f.cfg.key]?.impact));
+  if (watch.length) return [label, `Recheck ${watch.map((f) => f.cfg.name).join(", ")}. The trend points toward a warning or a worse reading.`];
+  if (rapidTemp) return [label, `Water temperature varied by ${rapidTemp.toFixed(1)} °C in the last hour. Confirm it on site.`];
+  if (consistency.allowed < consistency.total) return [label, "Some recent checks did not give a GO result. Confirm the water conditions on site."];
+  if (status === "go_caution") return [label, `Check ${names("caution")} on site and follow the ranger release protocol.`];
+  if (factors.some((f) => trends[f.cfg.key]?.direction === "insufficient"))
+    return [label, "There are too few recent readings to tell whether all three are steady. Complete the on-site checks."];
+  return [label, "Complete the on-site checks and follow the ranger release protocol."];
+}
+
+// Horizontal threshold gauge: danger | caution | safe | caution | danger
+function RangeGauge({ cfg, value, muted }) {
+  const [sMin, sMax] = cfg.threshold.safe;
+  const [cMin, cMax] = cfg.threshold.caution;
+  const pad = (cMax - cMin) * 0.2;
+  // Only draw a danger zone on sides where one exists (caution limit inside the physical range)
+  const lo = cMin > cfg.plausible[0] ? cMin - pad : cMin;
+  const hi = cMax < cfg.plausible[1] ? cMax + pad : cMax;
+  const pct = (v) => Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100));
+  const has = value !== null && value !== undefined;
+  return (
+    <div className="mt-1" aria-hidden="true">
+      <div className="relative h-1.5 rounded-full overflow-hidden bg-danger/25">
+        <div className="absolute inset-y-0 bg-caution/30" style={{ left: `${pct(cMin)}%`, width: `${pct(cMax) - pct(cMin)}%` }} />
+        <div className="absolute inset-y-0 bg-safe/40" style={{ left: `${pct(sMin)}%`, width: `${pct(sMax) - pct(sMin)}%` }} />
+      </div>
+      {has && (
+        <div className="relative h-0">
+          <span
+            className={`absolute -top-[9px] w-[3px] h-3 rounded-sm -translate-x-1/2 ring-2 ring-card ${muted ? "bg-muted-foreground" : "bg-foreground"}`}
+            style={{ left: `${pct(value)}%` }}
+          />
+        </div>
+      )}
+      <div className="flex justify-between text-xs text-muted-foreground font-mono mt-1">
+        <span>{cMin}</span>
+        <span className="text-safe">
+          safe {sMin}–{sMax}
+        </span>
+        <span>{cMax}</span>
+      </div>
+    </div>
+  );
 }
 
 export default function Dashboard() {
-  const [latestReading, setLatestReading] = useState(null);
-  const [trendHistory, setTrendHistory] = useState([]);
-  const [connectionState, setConnectionState] = useState("connecting");
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const [errorMessage, setErrorMessage] = useState(null);
+  const buoy = useBuoy();
+  const [history, setHistory] = useState([]);
+  const [historyError, setHistoryError] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showDecisionPanel, setShowDecisionPanel] = useState(true);
   const [expandedSensor, setExpandedSensor] = useState(null);
 
   useEffect(() => {
-    const latestRef = ref(db, DB_PATHS.LATEST);
-    // Query only the last 50 readings for session trend analysis & sparklines
+    // Last 50 readings for trend analysis & sparklines
     const historyQuery = query(ref(db, DB_PATHS.READINGS), limitToLast(50));
-
-    onValue(
-      latestRef,
-      (snap) => {
-        const raw = snap.val();
-        if (raw) {
-          const mapped = mapArduinoReading(raw);
-          setLatestReading(mapped);
-          setConnectionState("live");
-          setLastUpdated(
-            mapped.timestamp
-              ? new Date(mapped.timestamp).toLocaleTimeString("en-PH")
-              : new Date().toLocaleTimeString("en-PH"),
-          );
-          setErrorMessage(null);
-        } else {
-          setConnectionState("error");
-          setErrorMessage(
-            "No sensor data found. Waiting for Arduino to transmit.",
-          );
-        }
-      },
-      (err) => {
-        setConnectionState("error");
-        setErrorMessage(err.message);
-      },
-    );
-
-    onValue(
+    const unsubscribe = onValue(
       historyQuery,
       (snap) => {
+        setHistoryError(false);
         const data = snap.val();
-        if (data) {
-          const entries = Object.values(data)
-            .map(mapArduinoReading)
-            .filter(Boolean)
-            .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
-            .map((e) => ({
-              time: e.timestamp
-                ? new Date(e.timestamp).toLocaleTimeString("en-PH", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "--:--",
-              air_temperature: e.air_temperature ?? null,
-              temperature: e.temperature ?? null,
-              humidity: e.humidity ?? null,
-              ph: e.ph ?? null,
-              turbidity: e.turbidity ?? null,
-            }));
-          setTrendHistory(entries);
-        }
+        if (!data) return setHistory([]);
+        const entries = Object.values(data)
+          .map(mapArduinoReading)
+          .filter((e) => e?.timestamp > 0 && e.timestamp <= Date.now())
+          .sort((a, b) => a.timestamp - b.timestamp)
+          .map((e) => ({
+            ...evaluateReading(e).clean, // faulty probe values → null
+            time: new Date(e.timestamp).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" }),
+          }));
+        setHistory(entries);
       },
-      () => {},
+      () => { setHistoryError(true); setHistory([]); },
     );
-
-    return () => {
-      off(latestRef);
-      off(historyQuery);
-    };
+    return unsubscribe;
   }, []);
 
-  const sensors = SENSOR_CONFIG.map((cfg) => {
-    const value = latestReading ? (latestReading[cfg.key] ?? null) : null;
-    const status = deriveStatus(value, cfg.threshold);
-    return { ...cfg, value, status };
+  const { reading, evaluation, connection } = buoy;
+  const isLive = connection === "live";
+  const timestampValid = buoy.lastPacketAt && buoy.lastPacketAt <= buoy.now + 30_000;
+  const ageLabel = timestampValid ? formatAge(buoy.ageMs) : "—";
+
+  // ── Decision ────────────────────────────────────────────────────────────
+  const lastKnownStatus = computeReleaseStatus(reading);
+  const releaseStatus = isLive ? lastKnownStatus : ["offline", "error"].includes(connection) ? "offline" : "unknown";
+  const meta = RELEASE_META[releaseStatus];
+  const tone = TONE[meta.tone];
+
+  const sensors = SENSORS.map((cfg) => {
+    const ev = evaluation?.sensors[cfg.key];
+    return {
+      cfg,
+      raw: ev?.raw ?? null,
+      value: ev?.value ?? null,
+      status: ev?.status ?? "unknown",
+      faultReason: ev?.faultReason ?? null,
+    };
   });
+  const waterFactors = sensors.filter((s) => s.cfg.type === "water");
+  const envFactors = sensors.filter((s) => s.cfg.type === "environment");
+  // Compare current readings only with history from the preceding hour.
+  // While offline, show the hour ending at the last saved reading.
+  const windowEnd = isLive ? buoy.now : history.at(-1)?.timestamp;
+  const trendWindow = useMemo(() => history.filter((r) =>
+    r.timestamp >= windowEnd - TREND_WINDOW_MS && r.timestamp <= windowEnd
+  ), [history, windowEnd]);
 
-  // Only water testing sensors dictate GO / NO-GO status
-  const waterSensors = sensors.filter((s) => s.type === "water");
-  const cautionCount = waterSensors.filter((s) => s.status === "caution").length;
-  const dangerCount = waterSensors.filter((s) => s.status === "danger").length;
-
-  let releaseStatus = "unknown";
-  if (latestReading) {
-    if (dangerCount >= 1) releaseStatus = "danger";
-    else if (cautionCount >= 2) releaseStatus = "nogo_caution";
-    else if (cautionCount === 1) releaseStatus = "go_caution";
-    else releaseStatus = "go";
-  }
-
-  // Compute trends using the full session history (not capped at 20)
   const trends = useMemo(() => {
-    const result = {};
-    SENSOR_CONFIG.forEach((cfg) => {
-      result[cfg.key] = computeTrend(trendHistory, cfg.key);
+    const out = {};
+    SENSORS.forEach((cfg) => {
+      const current = isLive ? evaluation?.sensors[cfg.key]?.value : trendWindow.at(-1)?.[cfg.key];
+      out[cfg.key] = analyzeTrend(trendWindow, cfg.key, current);
     });
-    return result;
-  }, [trendHistory]);
+    return out;
+  }, [trendWindow, evaluation, isLive]);
 
-  const recommendation = useMemo(
-    () => generateRecommendation(sensors, trends, releaseStatus),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(sensors.map((s) => ({ k: s.key, v: s.value, st: s.status }))), trends, releaseStatus],
-  );
+  const consistency = useMemo(() => recentConsistency(trendWindow, 3), [trendWindow]);
 
-  // % of readings where ALL sensors are in safe range this session
-  const allSafePercent = useMemo(() => {
-    if (trendHistory.length === 0) return null;
-    const allSafeCount = trendHistory.filter((r) =>
-      SENSOR_CONFIG.every((cfg) => {
-        const v = r[cfg.key];
-        return (
-          v === null ||
-          (v >= cfg.threshold.safe[0] && v <= cfg.threshold.safe[1])
-        );
-      }),
-    ).length;
-    return Math.round((allSafeCount / trendHistory.length) * 100);
-  }, [trendHistory]);
+  const rapidTemp = useMemo(() => {
+    const temps = trendWindow.map((r) => r.temperature).filter((v) => v !== null);
+    if (temps.length < 2) return null;
+    const delta = Math.max(...temps) - Math.min(...temps);
+    return delta >= RAPID_TEMP_DELTA ? delta : null;
+  }, [trendWindow]);
 
-  const stableCount = SENSOR_CONFIG.filter(
-    (cfg) => trends[cfg.key] === "stable",
-  ).length;
+  const [headline, nextStep] = rangerAdvice(releaseStatus, waterFactors, trends, consistency, rapidTemp);
+  const historicalStatuses = history.map(computeReleaseStatus).filter((s) => s !== "unknown" && s !== "fault");
+  const inRange = historicalStatuses.filter((s) => s === "go").length;
+  const knownTrends = WATER_KEYS.filter((k) => trends[k].direction !== "insufficient" && (!isLive || evaluation?.sensors[k]?.value != null));
+  const stableCount = knownTrends.filter((k) => trends[k].direction === "stable").length;
+  const savedAt = history.at(-1)?.timestamp;
 
-  const getBannerDetails = (status) => {
-    switch (status) {
-      case "go":
-        return {
-          bgClass: "bg-safe/10 border-safe/40",
-          textClass: "text-safe",
-          title: "GO: SAFE TO RELEASE",
-          desc: "All water quality parameters are within safe thresholds for sea turtle release.",
-          icon: CheckCircle2,
-        };
-      case "go_caution":
-        return {
-          bgClass: "bg-caution/10 border-caution/40",
-          textClass: "text-caution",
-          title: "GO WITH CAUTION: SAFE TO RELEASE",
-          desc: "Exactly one parameter is within caution limits. Release is permissible, but proceed with caution.",
-          icon: CheckCircle2,
-        };
-      case "nogo_caution":
-        return {
-          bgClass: "bg-orange-500/10 border-orange-500/40",
-          textClass: "text-orange-600",
-          title: "NO-GO: DO NOT RELEASE (CAUTION)",
-          desc: "Two or more parameters are within caution limits. Release is not recommended due to suboptimal conditions.",
-          icon: AlertTriangle,
-        };
-      case "danger":
-        return {
-          bgClass: "bg-danger/10 border-danger/40",
-          textClass: "text-danger",
-          title: "NO-GO: DO NOT RELEASE (DANGER)",
-          desc: "One or more parameters are at critical danger levels. Release is strictly prohibited.",
-          icon: AlertTriangle,
-        };
-      default:
-        return null;
-    }
-  };
+  const BannerIcon =
+    releaseStatus === "go" || releaseStatus === "go_caution"
+      ? CheckCircle2
+      : releaseStatus === "offline"
+        ? WifiOff
+        : releaseStatus === "fault"
+          ? PauseCircle
+          : releaseStatus === "unknown"
+            ? RefreshCw
+            : XCircle;
 
-  const banner = getBannerDetails(releaseStatus);
-
-  const envSensors = sensors.filter((s) => s.type === "environment");
-
+  // ── Sensor card ─────────────────────────────────────────────────────────
   const renderSensorCard = (sensor) => {
-    const Icon = sensor.icon;
-    const sparkData = trendHistory.slice(-20).map((e) => ({
-      time: e.time,
-      value: e[sensor.key],
-    }));
-    const alert = sensorAlertLabel(sensor.status);
-    const isExpanded = expandedSensor === sensor.key;
-
-    // Compute hardware probe health
-    const isDisconnected = connectionState !== "live";
-    const isFaulty =
-      !isDisconnected &&
-      (sensor.value === null ||
-        sensor.value === undefined ||
-        sensor.value === -999);
-    const probeHealthState = isDisconnected
-      ? "DISCONNECTED"
-      : isFaulty
-        ? "FAULTY"
-        : "WORKING";
+    const { cfg } = sensor;
+    const Icon = ICONS[cfg.key];
+    const isExpanded = expandedSensor === cfg.key;
+    const isFault = isLive && sensor.status === "fault";
+    const displayStatus = !reading ? "unknown" : isLive ? sensor.status : "offline";
+    const t = TONE[SENSOR_STATUS_TONE[displayStatus]];
+    // Offline: show the last raw value we received (even if it was flagged)
+    const lastRaw = typeof sensor.raw === "number" ? sensor.raw : null;
+    const shownValue = isFault ? null : isLive ? sensor.value : lastRaw;
+    const sparkData = history.slice(-20).map((e) => ({ time: e.time, value: e[cfg.key] }));
+    const trend = trends[cfg.key];
+    const TrendIcon = TREND_META[trend.direction].icon;
 
     return (
       <div
-        key={sensor.key}
-        className="bg-[#fffaf2] rounded-xl p-4 border border-[#ddd4c4] shadow-sm hover:border-[#1e3a8a]/40 transition-all flex flex-col justify-between"
+        key={cfg.key}
+        className={`bg-card rounded-xl p-4 border shadow-sm transition-all flex flex-col justify-between ${
+          isLive && cfg.type === "water" && ["caution", "danger", "fault"].includes(sensor.status)
+            ? t.border
+            : "border-border hover:border-primary/40"
+        }`}
       >
         <div>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <Icon className="w-4 h-4 text-[#1e3a8a]" />
-              <p className="text-xs text-[#7c7366] font-semibold">
-                {sensor.name}
-              </p>
+              <Icon className="w-4 h-4 text-primary" />
+              <p className="text-xs text-muted-foreground font-semibold">{cfg.name}</p>
+              <button
+                aria-label={`Show ranges for ${cfg.name}`}
+                onClick={() => setExpandedSensor(isExpanded ? null : cfg.key)}
+                className="text-muted-foreground hover:text-primary transition-colors"
+                title="Threshold ranges"
+                aria-expanded={isExpanded}
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                sensor.status === "safe"
-                  ? "bg-[#15803d]/10 text-[#15803d]"
-                  : sensor.status === "caution"
-                    ? "bg-[#b45309]/10 text-[#b45309]"
-                    : sensor.status === "danger"
-                      ? "bg-[#9a3412]/10 text-[#9a3412]"
-                      : "bg-secondary text-muted-foreground"
-              }`}
-            >
-              {sensor.status === "unknown"
-                ? "NO DATA"
-                : sensor.status.toUpperCase()}
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${t.bg} ${t.text}`}>
+              {displayStatus === "unknown" ? "NO DATA" : displayStatus.toUpperCase()}
             </span>
           </div>
 
-          {/* Hardware Probe Health Badge */}
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-2">
-            <div className="flex items-center gap-1">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  probeHealthState === "WORKING"
-                    ? "bg-[#15803d]"
-                    : probeHealthState === "FAULTY"
-                      ? "bg-[#b45309]"
-                      : "bg-[#9a3412]"
-                }`}
-              />
-              <span className="text-[10px] font-bold uppercase tracking-wide text-[#7c7366]">
-                {probeHealthState}
-              </span>
-            </div>
-            <button
-              onClick={() =>
-                setExpandedSensor(isExpanded ? null : sensor.key)
-              }
-              className="text-[#a8a29e] hover:text-[#1e3a8a] transition-colors"
-              title="View Habitat Target"
-            >
-              <Info className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Expandable description */}
           {isExpanded && (
-            <div className="text-[10px] mb-3 leading-relaxed border-l-2 border-[#1e3a8a] pl-2 py-1 bg-[#f5f0eb] rounded-r-lg">
-              <p className="text-[#1a1714] font-medium mb-1">
-                Target: {sensor.threshold.safe[0]}–{sensor.threshold.safe[1]} {sensor.unit}
-              </p>
-              <p className="text-[#7c7366]">
-                {sensor.description}
+            <div className="text-xs mb-3 leading-relaxed border-l-2 border-primary pl-2 py-1 bg-muted rounded-r-lg">
+              <p className="text-foreground font-medium mb-1">
+                Safe {cfg.threshold.safe[0]}–{cfg.threshold.safe[1]} {cfg.unit} · Caution {cfg.threshold.caution[0]}–
+                {cfg.threshold.caution[1]} {cfg.unit}
               </p>
             </div>
           )}
 
-          {/* Big KPI Value */}
-          <div className="my-2 flex items-baseline justify-between">
-            <p className="text-2xl font-mono font-bold tracking-tight text-[#1a1714] tabular-nums">
-              {isFaulty ? "FAULT" : isDisconnected ? "OFFLINE" : truncTo2(sensor.value)}
+          <div className="my-1 flex items-baseline justify-between gap-2">
+            <p
+              className={`text-2xl font-mono font-bold tracking-tight tabular-nums ${
+                isLive ? "text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {isFault ? "FAULT" : truncTo2(shownValue)}
+              {!isFault && shownValue !== null && (
+                <span className="text-xs font-semibold text-muted-foreground ml-1">{cfg.unit}</span>
+              )}
             </p>
-            {sensor.type === "water" && (
-              <span className={`text-[10px] font-bold ${alert.cls}`}>
-                {alert.text}
+            {isLive && !isFault && trend.direction !== "insufficient" && (
+              <span className="flex items-center gap-0.5 text-xs font-semibold text-muted-foreground">
+                <TrendIcon className="w-3 h-3" />
+                {TREND_META[trend.direction].label}
               </span>
             )}
           </div>
+          <p className="text-xs text-muted-foreground min-h-[14px]">
+            {!reading
+              ? "Waiting for first reading"
+              : !isLive
+                ? `Last known value · ${ageLabel}${sensor.status === "fault" ? " · was flagged faulty" : ""}`
+                : isFault
+                  ? `${sensor.faultReason}${typeof sensor.raw === "number" ? ` (raw ${sensor.raw})` : ""}`
+                  : describeValue(cfg, sensor.value, sensor.status)}
+          </p>
+
+          {!isFault && <RangeGauge cfg={cfg} value={shownValue} muted={!isLive} />}
         </div>
 
-        {/* Sparkline */}
-        <div className="h-10 mt-2 -mx-1">
+        <div className="h-10 mt-3 -mx-1">
           {sparkData.some((d) => d.value !== null) ? (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={sparkData}>
                 <XAxis dataKey="time" hide />
-                <YAxis hide />
+                <YAxis hide domain={["dataMin", "dataMax"]} />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1a1714",
-                    color: "#ffffff",
-                    border: "none",
-                    borderRadius: "6px",
-                    padding: "4px 8px",
-                    fontSize: "11px",
-                  }}
-                  itemStyle={{ color: "#ffffff" }}
-                  labelStyle={{ color: "#a8a29e", fontSize: "10px" }}
-                  formatter={(v) => [
-                    v != null ? `${truncTo2(v)} ${sensor.unit}` : "—",
-                    sensor.name,
-                  ]}
+                  contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "none", borderRadius: "6px", padding: "4px 8px", fontSize: "11px" }}
+                  itemStyle={{ color: "hsl(var(--popover-foreground))" }}
+                  labelStyle={{ color: "hsl(var(--muted-foreground))", fontSize: "10px" }}
+                  formatter={(v) => [v != null ? `${truncTo2(v)} ${cfg.unit}` : "—", cfg.name]}
                 />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#1e3a8a"
-                  dot={false}
-                  strokeWidth={1.8}
-                  isAnimationActive={false}
-                  connectNulls
-                />
+                <Line type="monotone" dataKey="value" stroke={isLive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"} dot={false} strokeWidth={1.8} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <p className="text-[10px] text-[#a8a29e]">
-                No telemetry history
-              </p>
+              <p className="text-xs text-muted-foreground">No saved readings</p>
             </div>
           )}
         </div>
@@ -538,502 +411,283 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="space-y-5">
-        {/* Fixed Dashboard Header & Action Controls */}
+        {/* Header & actions */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-header font-bold text-[#1a1714] tracking-tight">
-              Live Sea Monitoring Dashboard
-            </h2>
-            <p className="text-xs text-[#7c7366] font-medium">
-              Real-time water quality telemetry & turtle release assessment
-            </p>
+            <h2 className="text-xl font-header font-bold text-foreground tracking-tight">Ranger dashboard</h2>
+            <p className="text-xs text-muted-foreground font-medium">Check the water before a pawikan release.</p>
           </div>
-
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setShowDecisionPanel(!showDecisionPanel)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#ddd4c4] bg-[#fffaf2] text-xs font-semibold text-[#1a1714] hover:bg-[#f5f0eb] transition-colors shadow-2xs"
+              aria-pressed={showDecisionPanel}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-2xs"
             >
-              <Target className="w-3.5 h-3.5 text-[#1e3a8a]" />
-              {showDecisionPanel ? "Hide Decision Support" : "Decision Support"}
+              <Target className="w-3.5 h-3.5 text-primary" />
+              {showDecisionPanel ? "Hide history" : "Show history"}
             </button>
             <button
               onClick={() => setShowGuide(!showGuide)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#ddd4c4] bg-[#fffaf2] text-xs font-semibold text-[#1a1714] hover:bg-[#f5f0eb] transition-colors shadow-2xs"
+              aria-pressed={showGuide}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-2xs"
             >
-              <TestTube className="w-3.5 h-3.5 text-[#1e3a8a]" />
+              <BookOpen className="w-3.5 h-3.5 text-primary" />
               {showGuide ? "Hide Assessment Guide" : "Assessment Guide"}
             </button>
           </div>
         </div>
 
-        {connectionState === "connecting" && (
-          <div className="flex items-center gap-3 bg-secondary/40 border border-secondary rounded-xl px-5 py-3 text-sm text-muted-foreground">
-            <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
-            Connecting to Firebase Realtime Database…
-          </div>
-        )}
-        {connectionState === "error" && (
-          <div className="flex items-center gap-3 bg-danger/10 border border-danger/30 rounded-xl px-5 py-3 text-sm text-danger">
-            <WifiOff className="w-4 h-4 shrink-0" />
-            {errorMessage || "Unable to connect to Firebase."}
-          </div>
-        )}
-
-        {/* Top Summary Row (Alert Banner + Quick Metric Panels) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Banner (GO / NO-GO) - 2 cols on md+ */}
-          <div className="md:col-span-2">
-            {latestReading && banner ? (
-              <div
-                className={`h-full flex items-center rounded-xl p-5 border bg-[#fffaf2] border-[#ddd4c4] shadow-sm transition-all ${banner.bgClass}`}
-              >
-                <div className="flex items-start gap-3.5">
-                  <div className="p-2 rounded-lg bg-[#1e3a8a]/10 shrink-0 mt-0.5">
-                    <banner.icon
-                      className={`w-6 h-6 ${banner.textClass}`}
-                    />
-                  </div>
-                  <div>
-                    <h2
-                      className={`text-base font-header font-bold tracking-tight mb-1 ${banner.textClass}`}
-                    >
-                      {banner.title}
-                    </h2>
-                    <p
-                      className="text-xs font-medium text-[#7c7366] leading-relaxed"
-                    >
-                      {banner.desc}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="h-full flex items-center rounded-xl p-5 border border-[#ddd4c4] bg-[#fffaf2] shadow-sm">
-                <div className="flex items-center gap-3">
-                  <RefreshCw className="w-5 h-5 text-[#a8a29e] animate-spin shrink-0" />
-                  <div>
-                    <h2 className="text-sm font-header font-bold text-[#1a1714] mb-0.5">
-                      Awaiting Live Telemetry Stream
-                    </h2>
-                    <p className="text-xs text-[#7c7366]">
-                      The release assessment will populate automatically once the sensor buoy transmits.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Metric Summary Card */}
-          <div className="bg-[#fffaf2] rounded-xl border border-[#ddd4c4] shadow-sm p-4 flex justify-around items-center h-full min-h-[90px]">
-            <div className="text-center px-2">
-              <p className="text-[10px] text-[#7c7366] font-bold uppercase tracking-[1.2px] mb-1">
-                Caution Level
-              </p>
-              <p className="text-2xl font-header font-extrabold text-[#b45309] leading-none">
-                {cautionCount}
-              </p>
-            </div>
-            <div className="w-[1px] h-10 bg-[#ddd4c4]" />
-            <div className="text-center px-2">
-              <p className="text-[10px] text-[#7c7366] font-bold uppercase tracking-[1.2px] mb-1">
-                Danger Level
-              </p>
-              <p className="text-2xl font-header font-extrabold text-[#9a3412] leading-none">
-                {dangerCount}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Live Sensor Data (Primary Focus) */}
-        <div>
-          <div className="mb-3">
-            <h3 className="text-base font-header font-bold text-[#1a1714]">
-              Water Quality Sensors (Decision Factors)
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8">
-            {waterSensors.map(renderSensorCard)}
-          </div>
-
-          <div className="mb-3">
-            <h3 className="text-base font-header font-bold text-[#1a1714]">
-              Environmental Context (Read-Only)
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {envSensors.map(renderSensorCard)}
-          </div>
-        </div>
-
-        {/* Collapsible How the GO/NO-GO assessment works (Bottom Secondary) */}
+        {/* ── Assessment guide ─────────────────────────────────────────── */}
         {showGuide && (
-          <div className="bg-[#fffaf2] rounded-xl border border-[#ddd4c4] shadow-sm p-6 animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="bg-card rounded-xl border border-border shadow-sm p-5 sm:p-6 animate-in fade-in slide-in-from-top-4 duration-200">
             <div className="flex items-center gap-2 mb-4">
-              <span className="p-1.5 rounded-lg bg-[#1e3a8a]/10 text-[#1e3a8a]">
-                <TestTube className="w-5 h-5" />
+              <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                <BookOpen className="w-5 h-5" />
               </span>
-              <h3 className="text-base font-header font-bold text-[#1a1714]">
-                How the GO/NO-GO Assessment Works
-              </h3>
+              <h3 className="text-base font-header font-bold text-foreground">How the GO/NO-GO Assessment Works</h3>
             </div>
 
-            <p className="text-xs text-[#7c7366] mb-4 leading-relaxed font-medium">
-              Environmental thresholds are calibrated to align with the combined
-              physiological tolerances of the five local sea turtle species
-              nesting in Labac, Naic, Cavite (Green Sea, Leatherback,
-              Loggerhead, Hawksbill, and Olive Ridley). This ensures safe
-              releases under unified local water quality guidelines.
+            <p className="text-xs text-muted-foreground mb-4 leading-relaxed font-medium">
+              The threshold values below match the project paper. Only the three{" "}
+              <strong>water</strong> sensors determine the project result. Air temperature and humidity give additional context.
             </p>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Logic Rules */}
-              <div className="space-y-4">
-                <h4 className="text-xs font-bold text-[#1a1714] uppercase tracking-wider mb-2">
-                  Decision Logic
-                </h4>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-[#15803d]/10 border border-[#15803d]/20">
-                    <CheckCircle2 className="w-4 h-4 text-[#15803d] shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-[#15803d]">
-                        GO: SAFE TO RELEASE
-                      </p>
-                      <p className="text-xs text-[#7c7366] mt-0.5">
-                        All 3 water quality parameters are within their{" "}
-                        <strong>Safe Ranges</strong>.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-[#b45309]/10 border border-[#b45309]/20">
-                    <CheckCircle2 className="w-4 h-4 text-[#b45309] shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-[#b45309]">
-                        GO WITH CAUTION: SAFE TO RELEASE
-                      </p>
-                      <p className="text-xs text-[#7c7366] mt-0.5">
-                        Exactly <strong>1 parameter</strong> is within its
-                        Caution Range, and the other 2 are Safe.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-[#9a3412]/10 border border-[#9a3412]/20">
-                    <AlertTriangle className="w-4 h-4 text-[#9a3412] shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-[#9a3412]">
-                        NO-GO: DO NOT RELEASE (CAUTION)
-                      </p>
-                      <p className="text-xs text-[#7c7366] mt-0.5">
-                        <strong>2 or more parameters</strong> are within their
-                        Caution Ranges (suboptimal release conditions).
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-[#9a3412]/15 border border-[#9a3412]/30">
-                    <AlertTriangle className="w-4 h-4 text-[#9a3412] shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-[#9a3412]">
-                        NO-GO: DO NOT RELEASE (DANGER)
-                      </p>
-                      <p className="text-xs text-[#7c7366] mt-0.5">
-                        <strong>1 or more parameters</strong> are within their
-                        critical <strong>Danger Ranges</strong>.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              <div>
+                <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">Decision Logic (checked in order)</h4>
+                <ol className="space-y-2">
+                  {[
+                    { s: "offline", rule: "The connection is unavailable or the last reading is more than a minute old. Check conditions on site." },
+                    { s: "fault", rule: "A water probe sends no value, an impossible value (e.g. −127 °C, pH 14) or the monitoring station flags it — safety can't be confirmed." },
+                    { s: "danger", rule: "1 or more water parameters in its Danger range, with all required probes working." },
+                    { s: "nogo_caution", rule: "2 or more water parameters in their Caution ranges." },
+                    { s: "go_caution", rule: "Exactly 1 water parameter in its Caution range; the others Safe." },
+                    { s: "go", rule: "All 3 water parameters in their Safe ranges." },
+                  ].map(({ s, rule }, i) => {
+                    const m = RELEASE_META[s];
+                    const t = TONE[m.tone];
+                    return (
+                      <li key={s} className={`flex items-start gap-3 p-3 rounded-lg border ${t.bg} ${t.border}`}>
+                        <span className={`text-xs font-bold w-4 shrink-0 mt-0.5 ${t.text}`}>{i + 1}</span>
+                        <div>
+                          <p className={`text-xs font-bold ${t.text}`}>{m.label}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{rule}</p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+                <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+                  Advisory checks (do not change the verdict): trend projection to the next boundary, agreement of the last 3
+                  readings, and a warning when water temperature swings ≥ {RAPID_TEMP_DELTA} °C within an hour (project-defined
+                  monitoring prompt).
+                </p>
               </div>
 
-              {/* Threshold Ranges Table */}
               <div>
-                <h4 className="text-xs font-bold text-[#1a1714] uppercase tracking-wider mb-2">
-                  Threshold Values
-                </h4>
-                <div className="border border-[#ddd4c4] rounded-lg overflow-hidden bg-[#fffaf2]">
+                <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">Threshold Values</h4>
+                <div className="border border-border rounded-lg overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-[#f5f0eb] border-b border-[#ddd4c4]">
-                        <th className="p-2 font-bold text-[#1a1714]">
-                          Parameter
-                        </th>
-                        <th className="p-2 font-bold text-[#15803d]">Safe (GO)</th>
-                        <th className="p-2 font-bold text-[#b45309]">Caution</th>
-                        <th className="p-2 font-bold text-[#9a3412]">Danger</th>
+                      <tr className="bg-muted border-b border-border">
+                        <th className="p-2 font-bold text-foreground">Parameter</th>
+                        <th className="p-2 font-bold text-safe">Safe</th>
+                        <th className="p-2 font-bold text-caution">Caution</th>
+                        <th className="p-2 font-bold text-danger">Danger</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b border-[#ddd4c4]">
-                        <td className="p-2 font-medium text-[#1a1714]">
-                          Air Temp
-                        </td>
-                        <td className="p-2 text-[#15803d]">25.00 – 32.00 °C</td>
-                        <td className="p-2 text-[#b45309]">
-                          22.00 – 24.99 / 32.01 – 35.00
-                        </td>
-                        <td className="p-2 text-[#9a3412]">
-                          &lt; 22.00 / &gt; 35.00
-                        </td>
-                      </tr>
-                      <tr className="border-b border-[#ddd4c4]">
-                        <td className="p-2 font-medium text-[#1a1714]">
-                          Water Temp
-                        </td>
-                        <td className="p-2 text-[#15803d]">26.00 – 31.00 °C</td>
-                        <td className="p-2 text-[#b45309]">
-                          24.00 – 25.99 / 31.01 – 33.00
-                        </td>
-                        <td className="p-2 text-[#9a3412]">
-                          &lt; 24.00 / &gt; 33.00
-                        </td>
-                      </tr>
-                      <tr className="border-b border-[#ddd4c4]">
-                        <td className="p-2 font-medium text-[#1a1714]">
-                          Humidity
-                        </td>
-                        <td className="p-2 text-[#15803d]">65.00 – 85.00 %</td>
-                        <td className="p-2 text-[#b45309]">
-                          55.00 – 64.99 / 85.01 – 90.00
-                        </td>
-                        <td className="p-2 text-[#9a3412]">
-                          &lt; 55.00 / &gt; 90.00
-                        </td>
-                      </tr>
-                      <tr className="border-b border-[#ddd4c4]">
-                        <td className="p-2 font-medium text-[#1a1714]">
-                          pH Level
-                        </td>
-                        <td className="p-2 text-[#15803d]">7.80 – 8.30</td>
-                        <td className="p-2 text-[#b45309]">
-                          7.50 – 7.79 / 8.31 – 8.50
-                        </td>
-                        <td className="p-2 text-[#9a3412]">
-                          &lt; 7.50 / &gt; 8.50
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2 font-medium text-[#1a1714]">
-                          Turbidity
-                        </td>
-                        <td className="p-2 text-[#15803d]">0.00 – 25.00 NTU</td>
-                        <td className="p-2 text-[#b45309]">25.01 – 50.00 NTU</td>
-                        <td className="p-2 text-[#9a3412]">&gt; 50.00 NTU</td>
-                      </tr>
+                      {["air_temperature", "temperature", "humidity", "ph", "turbidity"].map((key) => SENSORS.find((sensor) => sensor.key === key)).map((cfg) => {
+                        const [sMin, sMax] = cfg.threshold.safe;
+                        const [cMin, cMax] = cfg.threshold.caution;
+                        const [pMin, pMax] = cfg.plausible;
+                        // pH reads as 7.0, not 7
+                        const n = (v) => v.toFixed(2);
+                        const lowerCaution = sMin > cMin;
+                        const upperCaution = cMax > sMax;
+                        // caution limits at/beyond the physical range → no danger band on that side
+                        const lowerDanger = cMin > pMin;
+                        const upperDanger = cMax < pMax;
+                        const caution = [
+                          lowerCaution && (lowerDanger ? `${n(cMin)}–${n(sMin - 0.01)}` : `<${n(sMin)}`),
+                          upperCaution && (upperDanger ? `${n(sMax + 0.01)}–${n(cMax)}` : `>${n(sMax)}`),
+                        ].filter(Boolean);
+                        const danger = [lowerDanger && `<${n(cMin)}`, upperDanger && `>${n(cMax)}`].filter(Boolean);
+                        return (
+                          <tr key={cfg.key} className="border-b border-border last:border-0">
+                            <td className="p-2 font-medium text-foreground whitespace-nowrap">
+                              {cfg.name}
+                              {cfg.type === "environment" && <span className="block text-xs text-muted-foreground">context only</span>}
+                            </td>
+                            <td className="p-2 text-safe whitespace-nowrap">
+                              {n(sMin)}–{n(sMax)} {cfg.unit}
+                            </td>
+                            <td className="p-2 text-caution">{caution.length ? caution.join(" / ") : "—"}</td>
+                            <td className="p-2 text-danger whitespace-nowrap">{danger.length ? danger.join(" / ") : "—"}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-[#7c7366]">
-                  <span className="font-bold">Supported local species:</span>
-                  <span>
-                    Green Sea Turtle · Leatherback · Loggerhead · Hawksbill ·
-                    Olive Ridley
-                  </span>
-                </div>
+
+                <p className="mt-3 text-xs text-muted-foreground">
+                  <span className="font-bold">Local species:</span> Green Sea Turtle · Leatherback · Loggerhead · Hawksbill · Olive Ridley
+                </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Decision Support & Future Outlook Panel */}
-        {showDecisionPanel && (
-          <div className="mb-6 bg-white rounded-xl border border-secondary shadow-sm p-6 animate-in fade-in slide-in-from-top-4 duration-200">
-            <div className="flex items-center gap-2 mb-5">
-              <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
-                <Target className="w-5 h-5" />
-              </span>
+        {connection === "error" && (
+          <div className="flex items-center gap-3 bg-danger/10 border border-danger/30 rounded-xl px-5 py-3 text-sm text-danger">
+            <WifiOff className="w-4 h-4 shrink-0" />
+            {buoy.linkError || "Unable to connect to Firebase."}
+          </div>
+        )}
+
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(16rem,1fr)]">
+          <div role="status" aria-live="polite" className="rounded-2xl border bg-card p-5 shadow-sm sm:p-7">
+            <div className="flex items-center gap-3">
+              <span className={`grid h-11 w-11 place-items-center rounded-xl ${tone.bg} ${tone.text}`}><BannerIcon /></span>
               <div>
-                <h3 className="text-lg font-header font-bold text-foreground">
-                  Decision Support &amp; Future Outlook
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Based on {trendHistory.length} reading
-                  {trendHistory.length !== 1 ? "s" : ""} from the current
-                  session
-                </p>
+                <p className="text-sm font-semibold">Current water check</p>
+                <p className="text-xs text-muted-foreground">{timestampValid ? "Last station update · " + new Date(buoy.lastPacketAt).toLocaleString("en-PH", {dateStyle: "medium", timeStyle: "short"}) : "No station reading available"}</p>
               </div>
             </div>
+            <h2 className="mt-5 text-2xl font-bold tracking-tight sm:text-3xl">{headline}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              {isLive ? "Project result · " + meta.label : "A fresh reading is needed to assess the water now."}
+            </p>
+            {isLive && (
+              <ul className="mt-4 flex flex-wrap gap-2">
+                {waterFactors.map(({ cfg, status }) => (
+                  <li key={cfg.key} className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${TONE[SENSOR_STATUS_TONE[status]].bg} ${TONE[SENSOR_STATUS_TONE[status]].text}`}>
+                    {cfg.name} · {status === "fault" ? "faulty" : status}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="rounded-2xl border border-primary/20 bg-primary/[.06] p-5 sm:p-7">
+            <ClipboardCheck className="mb-3 h-6 w-6 text-primary" />
+            <h3 className="text-base font-bold">What to do now</h3>
+            <p className="mt-2 text-base leading-relaxed">{nextStep}</p>
+          </div>
+        </section>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* ── Left: Parameter Trends ─────────────────────────────── */}
+        {showDecisionPanel && (
+          <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-7">
+            <h3 className="text-xl font-bold">What earlier readings show</h3>
+            <p className="mb-5 mt-1 text-sm text-muted-foreground">
+              {historyError ? "Saved readings could not be loaded." : savedAt ?
+                "Latest saved reading · " + new Date(savedAt).toLocaleString("en-PH", {dateStyle: "medium", timeStyle: "short"}) : "No saved readings available."}
+            </p>
+            <div className="grid gap-6 xl:grid-cols-2">
+              <div className="divide-y rounded-xl border bg-muted/50 px-4">
+                {[
+                  { label: "All three in range", value: historicalStatuses.length ? Math.round(100 * inRange / historicalStatuses.length) + "%" : "No data",
+                    explanation: `${inRange} of ${historicalStatuses.length} usable saved readings had temperature, pH and turbidity in range together. We check up to 50 and skip readings with a faulty water sensor.` },
+                  { label: "Recent GO results", value: consistency.total ? consistency.allowed + " of " + consistency.total : "No data",
+                    explanation: "We check up to three saved readings in the hour shown. This counts GO and GO with caution under the project rules." },
+                  { label: "Steady measurements", value: knownTrends.length ? stableCount + " of " + knownTrends.length : "Too few readings",
+                    explanation: "Each measurement needs four usable readings in the hour shown. The count includes only measurements we can assess. A steady value can still be outside its range." }
+                ].map(({label, value, explanation}) => (
+                  <div key={label} className="flex items-center justify-between gap-3 py-4">
+                    <SummaryLabel label={label} explanation={explanation} />
+                    <strong className="text-right text-base tabular-nums">{value}</strong>
+                  </div>
+                ))}
+              </div>
+              {/* Trends */}
               <div>
-                <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-3">
-                  Parameter Trends
-                </h4>
+                <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-3">Changes over one hour</h4>
                 <div className="space-y-2">
-                  {sensors.map((sensor) => {
-                    const trend = trends[sensor.key];
-                    const trendMeta =
-                      TREND_META[trend] || TREND_META.insufficient;
-                    const TrendIcon = trendMeta.icon;
-                    const impact = trendImpact(
-                      sensor.threshold,
-                      sensor.value,
-                      trend,
-                    );
-                    const impactMeta =
-                      IMPACT_META[impact] || IMPACT_META.neutral;
+                  {waterFactors.map(({ cfg, value: liveValue, status: liveStatus }) => {
+                    const value = isLive ? liveValue : trendWindow.at(-1)?.[cfg.key];
+                    const status = isLive ? liveStatus : value == null ? "unknown" : "saved";
+                    const tr = trends[cfg.key];
+                    const TrendIcon = TREND_META[tr.direction].icon;
+                    const impact = tr.impact === "neutral" ? null : IMPACT_META[tr.impact];
+                    const eta = formatEta(tr.etaMinutes);
                     return (
-                      <div
-                        key={sensor.key}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-secondary/20 border border-secondary/40"
-                      >
+                      <div key={cfg.key} className="flex items-center gap-3 p-3 rounded-lg bg-muted/60 border border-border">
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-foreground">
-                            {sensor.name}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            Current:{" "}
-                            <span className="font-mono">
-                              {truncTo2(sensor.value)} {sensor.unit}
-                            </span>
+                          <p className="text-xs font-bold text-foreground">{cfg.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {status === "fault" ? (
+                              "Probe fault — excluded"
+                            ) : (
+                              <>
+                                {isLive ? "Now" : "Last saved value"} <span className="font-mono">{truncTo2(value)} {cfg.unit}</span>
+                                {tr.ratePerHour !== null && tr.direction !== "stable" && (
+                                  <>
+                                    {" · "}
+                                    <span className="font-mono">
+                                      {tr.ratePerHour > 0 ? "+" : ""}
+                                      {tr.ratePerHour.toFixed(2)} {cfg.unit}/h
+                                    </span>
+                                  </>
+                                )}
+                              </>
+                            )}
                           </p>
                         </div>
+                        {status === "fault" ? (
+                          <span className="text-xs font-semibold text-muted-foreground shrink-0">No trend</span>
+                        ) : (
                         <div className="flex flex-col items-end gap-0.5 shrink-0">
-                          <div
-                            className={`flex items-center gap-1 ${trendMeta.color}`}
-                          >
-                            <TrendIcon className="w-3.5 h-3.5" />
-                            <span className="text-xs font-medium">
-                              {trendMeta.label}
-                            </span>
-                          </div>
-                          <span
-                            className={`text-[10px] font-semibold ${impactMeta.color}`}
-                          >
-                            {impactMeta.label}
+                          <span className="flex items-center gap-1 text-xs font-medium text-foreground">
+                            <TrendIcon className="w-3.5 h-3.5 text-primary" />
+                            {TREND_META[tr.direction].label}
                           </span>
+                          {impact && <span className={`text-xs font-semibold ${impact.cls}`}>
+                            {impact.label}
+                            {eta && ` · ${eta}`}
+                          </span>}
                         </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
-                {trendHistory.length < 4 && (
-                  <p className="text-[10px] text-muted-foreground mt-2 italic">
-                    At least 4 readings are needed to compute trend
-                    directions. Currently have {trendHistory.length}.
+                {trendWindow.length < 4 && (
+                  <p className="text-xs text-muted-foreground mt-2 italic">
+                    At least 4 readings within an hour are needed to compute trends (currently {trendWindow.length}).
                   </p>
                 )}
               </div>
-
-              {/* ── Right: Recommendation + Session Stats ──────────────── */}
-              <div className="flex flex-col gap-4">
-                {/* Release Recommendation */}
-                <div>
-                  <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-3">
-                    Release Recommendation
-                  </h4>
-                  <div
-                    className={`rounded-xl p-4 border-2 ${
-                      releaseStatus === "go"
-                        ? "bg-safe/5 border-safe/20"
-                        : releaseStatus === "go_caution"
-                          ? "bg-caution/5 border-caution/20"
-                          : releaseStatus === "nogo_caution"
-                            ? "bg-orange-500/5 border-orange-500/20"
-                            : releaseStatus === "danger"
-                              ? "bg-danger/5 border-danger/20"
-                              : "bg-secondary/20 border-secondary"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      {releaseStatus === "go" ||
-                      releaseStatus === "go_caution" ? (
-                        <CheckCircle2
-                          className={`w-5 h-5 shrink-0 ${releaseStatus === "go" ? "text-safe" : "text-caution"}`}
-                        />
-                      ) : (
-                        <AlertTriangle
-                          className={`w-5 h-5 shrink-0 ${releaseStatus === "danger" ? "text-danger" : "text-orange-600"}`}
-                        />
-                      )}
-                      <p
-                        className={`text-sm font-bold ${
-                          releaseStatus === "go"
-                            ? "text-safe"
-                            : releaseStatus === "go_caution"
-                              ? "text-caution"
-                              : releaseStatus === "nogo_caution"
-                                ? "text-orange-600"
-                                : releaseStatus === "danger"
-                                  ? "text-danger"
-                                  : "text-muted-foreground"
-                        }`}
-                      >
-                        {releaseStatus === "go"
-                          ? "Release Now"
-                          : releaseStatus === "go_caution"
-                            ? "Release with Monitoring"
-                            : releaseStatus === "nogo_caution"
-                              ? "Hold — Monitor Closely"
-                              : releaseStatus === "danger"
-                                ? "Do Not Release"
-                                : "Awaiting Data"}
-                      </p>
-                    </div>
-                    <p className="text-sm text-foreground leading-relaxed">
-                      {recommendation}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Session Stats */}
-                <div className="p-4 rounded-xl bg-secondary/20 border border-secondary/40">
-                  <p className="text-[10px] font-bold text-foreground uppercase tracking-wider mb-3">
-                    Session Summary
-                  </p>
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    <div>
-                      <p
-                        className={`text-xl font-header font-bold leading-none ${
-                          allSafePercent === null
-                            ? "text-muted-foreground"
-                            : allSafePercent >= 80
-                              ? "text-safe"
-                              : allSafePercent >= 50
-                                ? "text-caution"
-                                : "text-danger"
-                        }`}
-                      >
-                        {allSafePercent !== null ? `${allSafePercent}%` : "--"}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-1 leading-tight">
-                        All-Safe Readings
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xl font-header font-bold text-primary leading-none">
-                        {trendHistory.length}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-1 leading-tight">
-                        Total Readings
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xl font-header font-bold text-foreground leading-none">
-                        {stableCount}/5
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-1 leading-tight">
-                        Stable Params
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Footer */}
-        <div className="bg-secondary/30 rounded-xl p-4 border border-secondary">
-          <p className="text-xs text-muted-foreground">
-            {connectionState === "live"
-              ? `Live data · Firebase Realtime Database · Last updated: ${lastUpdated}`
-              : connectionState === "connecting"
-                ? "Connecting to Firebase Realtime Database…"
-                : "Firebase connection unavailable."}
-          </p>
+        {/* ── Sensors ──────────────────────────────────────────────────── */}
+        <div>
+          <div className="mb-3 flex items-baseline justify-between gap-2 flex-wrap">
+            <h3 className="text-base font-header font-bold text-foreground">Water measurements</h3>
+            <span className="text-xs text-muted-foreground">Used in the current water check</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">{waterFactors.map(renderSensorCard)}</div>
+
+          <div className="mb-3 flex items-baseline justify-between gap-2 flex-wrap">
+            <h3 className="text-base font-header font-bold text-foreground">Air and humidity</h3>
+            <span className="text-xs text-muted-foreground">Shown for context</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">{envFactors.map(renderSensorCard)}</div>
         </div>
+
+        <details className="rounded-xl border bg-card p-4 text-sm">
+          <summary className="cursor-pointer font-semibold">Station details</summary>
+          <div className="mt-3 space-y-2 text-muted-foreground">
+            <p>{isLive ? ["caution", "danger", "fault"].map((level) =>
+              waterFactors.filter((factor) => factor.status === level).length + " " + (level === "fault" ? "faulty" : level)
+            ).join(" · ") : "Current sensor counts are unavailable."}</p>
+            {reading?.status && <p>Station’s saved result · {reading.status} ({ageLabel}). The dashboard also checks for faulty water sensors.</p>}
+          </div>
+        </details>
+
+
+
       </div>
     </Layout>
   );

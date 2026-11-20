@@ -1,53 +1,4 @@
-
-  const renderStatsTable = (title, statsArray) => (
-    <div className="mb-6">
-      <h3 className="text-sm font-header font-bold text-[#1a1714] mb-3">{title}</h3>
-      <div className="overflow-x-auto rounded-xl border border-secondary">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="bg-secondary/30 border-b border-secondary">
-              <th className="py-2.5 px-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Parameter</th>
-              <th className="py-2.5 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Min</th>
-              <th className="py-2.5 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Average</th>
-              <th className="py-2.5 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Max</th>
-              <th className="py-2.5 px-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider min-w-[160px]">% in Safe Range</th>
-            </tr>
-          </thead>
-          <tbody>
-            {statsArray.map((s) => {
-              if (s.noData) return (
-                <tr key={s.key} className="border-b border-secondary/40">
-                  <td className="py-3 px-4 font-medium text-foreground">{s.name}</td>
-                  <td colSpan={4} className="py-3 px-4 text-center text-xs text-muted-foreground italic">No data available</td>
-                </tr>
-              );
-              const t = THRESHOLDS[s.key];
-              const minStatus = s.min < t.safeMin || s.min > t.safeMax ? "text-caution" : "text-safe";
-              const maxStatus = s.max < t.safeMin || s.max > t.safeMax ? "text-caution" : "text-safe";
-              const avgStatus = s.avg < t.safeMin || s.avg > t.safeMax ? "text-caution font-bold" : "text-safe font-bold";
-              return (
-                <tr key={s.key} className="border-b border-secondary/40 hover:bg-secondary/10 transition-colors">
-                  <td className="py-3 px-4 font-medium text-foreground">{s.name}</td>
-                  <td className={`py-3 px-4 text-center font-mono text-xs ${minStatus}`}>{truncTo2(s.min)} {s.unit}</td>
-                  <td className={`py-3 px-4 text-center font-mono text-xs ${avgStatus}`}>{truncTo2(s.avg)} {s.unit}</td>
-                  <td className={`py-3 px-4 text-center font-mono text-xs ${maxStatus}`}>{truncTo2(s.max)} {s.unit}</td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${s.pctSafe >= 80 ? "bg-safe" : s.pctSafe >= 50 ? "bg-caution" : "bg-danger"}`} style={{ width: `${s.pctSafe}%` }} />
-                      </div>
-                      <span className={`text-xs font-bold w-10 text-right shrink-0 ${s.pctSafe >= 80 ? "text-safe" : s.pctSafe >= 50 ? "text-caution" : "text-danger"}`}>{s.pctSafe.toFixed(0)}%</span>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
+import { printDocument, escapeHtml } from "@/lib/printExport";
 import { useState, useEffect, useMemo } from "react";
 import Layout from "@/components/Layout";
 import {
@@ -78,34 +29,30 @@ import {
   db,
   ref,
   query,
-  limitToLast,
+  orderByChild,
+  startAt,
   onValue,
-  off,
   mapArduinoReading,
   DB_PATHS,
 } from "@/lib/firebase";
+import { SENSORS, RELEASE_META, releaseStatus, evaluateReading, truncTo2 } from "@/lib/sensors";
 
-// Truncates to exactly 2 decimal places WITHOUT rounding
-function truncTo2(v) {
-  if (v === null || v === undefined) return "--";
-  return (Math.floor(Number(v) * 100) / 100).toFixed(2);
-}
+// Thresholds come from the shared config; keep the {safeMin,…} shape used below
+const THRESHOLDS = Object.fromEntries(
+  SENSORS.map((s) => [
+    s.key,
+    {
+      safeMin: s.threshold.safe[0],
+      safeMax: s.threshold.safe[1],
+      cautionMin: s.threshold.caution[0],
+      cautionMax: s.threshold.caution[1],
+    },
+  ]),
+);
 
-const THRESHOLDS = {
-  air_temperature: { safeMin: 25, safeMax: 32, cautionMin: 22, cautionMax: 35 },
-  temperature: { safeMin: 26, safeMax: 31, cautionMin: 24, cautionMax: 33 },
-  humidity: { safeMin: 65, safeMax: 85, cautionMin: 55, cautionMax: 90 },
-  ph: { safeMin: 7.8, safeMax: 8.3, cautionMin: 7.5, cautionMax: 8.5 },
-  turbidity: { safeMin: 0, safeMax: 25, cautionMin: 0, cautionMax: 50 },
-};
+const pickSensors = (r) => Object.fromEntries(SENSORS.map((s) => [s.key, r?.[s.key] ?? null]));
 
-const SENSOR_META = [
-  { key: "air_temperature", name: "Air Temp", unit: "°C", color: "hsl(var(--caution))" },
-  { key: "temperature", name: "Water Temp", unit: "°C", color: "hsl(var(--primary))" },
-  { key: "humidity", name: "Humidity", unit: "%", color: "hsl(var(--accent))" },
-  { key: "ph", name: "pH Level", unit: "pH", color: "hsl(var(--caution))" },
-  { key: "turbidity", name: "Turbidity", unit: "NTU", color: "hsl(var(--danger))" },
-];
+const SENSOR_META = SENSORS.map(({ key, name, unit, type }) => ({ key, name, unit, type }));
 
 const TIME_RANGES = {
   day: 24 * 60 * 60 * 1000,
@@ -125,34 +72,33 @@ const GRAPH_TYPES = [
   { id: "bar", label: "Bar Chart", icon: BarChart3, desc: "Compares individual reading intervals" },
 ];
 
-// Derive per-reading overall release status
-function readingReleaseStatus(entry) {
-  let dangerCount = 0;
-  let cautionCount = 0;
-  SENSOR_META.forEach(({ key }) => {
-    const v = entry[key];
-    if (v === null || v === undefined) return;
-    const t = THRESHOLDS[key];
-    if (v < t.cautionMin || v > t.cautionMax) dangerCount++;
-    else if (v < t.safeMin || v > t.safeMax) cautionCount++;
-  });
-  if (dangerCount >= 1) return "danger";
-  if (cautionCount >= 2) return "nogo_caution";
-  if (cautionCount === 1) return "go_caution";
-  return "go";
-}
-
 // ── Export helpers ──────────────────────────────────────────────────────────
+// Exports use the RAW monitoring station values (audit trail); faulty probes are marked.
+const rawCell = (e, key) => {
+  const v = e.raw?.[key];
+  if (v === null || v === undefined) return "";
+  return e[key] === null ? `${v} (fault)` : v;
+};
+
+const STATUS_COLOR = {
+  go: "#16a34a",
+  go_caution: "#d97706",
+  nogo_caution: "#ea580c",
+  danger: "#dc2626",
+  fault: "#57534e",
+  unknown: "#57534e",
+};
+
 function exportTrendsCSV(data, timeLabel) {
   const headers = ["Timestamp", "Air Temp (°C)", "Water Temp (°C)", "Humidity (%)", "pH", "Turbidity (NTU)", "Release Status"];
   const rows = data.map((e) => [
     new Date(e.timestamp).toLocaleString("en-PH"),
-    e.air_temperature ?? "",
-    e.temperature ?? "",
-    e.humidity ?? "",
-    e.ph ?? "",
-    e.turbidity ?? "",
-    readingReleaseStatus(e).toUpperCase().replace(/_/g, " "),
+    rawCell(e, "air_temperature"),
+    rawCell(e, "temperature"),
+    rawCell(e, "humidity"),
+    rawCell(e, "ph"),
+    rawCell(e, "turbidity"),
+    RELEASE_META[e.release].label,
   ]);
   const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
@@ -165,18 +111,22 @@ function exportTrendsCSV(data, timeLabel) {
 }
 
 function exportTrendsPDF(data, timeLabel) {
-  const statusMap = { go: "GO", go_caution: "GO (Caution)", nogo_caution: "NO-GO (Caution)", danger: "NO-GO (Danger)" };
+  const cell = (e, key) => {
+    const v = e.raw?.[key];
+    if (v === null || v === undefined) return "—";
+    const n = escapeHtml(typeof v === "number" ? truncTo2(v) : String(v));
+    return e[key] === null ? `<span style="color:#57534e;text-decoration:line-through">${n}</span>` : n;
+  };
   const rows = data.map((e) => {
-    const s = readingReleaseStatus(e);
-    const color = s === "go" ? "#16a34a" : s === "go_caution" ? "#d97706" : s === "nogo_caution" ? "#ea580c" : "#dc2626";
+    const s = e.release;
     return `<tr>
       <td>${new Date(e.timestamp).toLocaleString("en-PH")}</td>
-      <td>${e.air_temperature != null ? Number(e.air_temperature).toFixed(2) : "—"}</td>
-      <td>${e.temperature != null ? Number(e.temperature).toFixed(2) : "—"}</td>
-      <td>${e.humidity != null ? Number(e.humidity).toFixed(2) : "—"}</td>
-      <td>${e.ph != null ? Number(e.ph).toFixed(2) : "—"}</td>
-      <td>${e.turbidity != null ? Number(e.turbidity).toFixed(2) : "—"}</td>
-      <td style="color:${color};font-weight:bold">${statusMap[s] ?? s}</td>
+      <td>${cell(e, "air_temperature")}</td>
+      <td>${cell(e, "temperature")}</td>
+      <td>${cell(e, "humidity")}</td>
+      <td>${cell(e, "ph")}</td>
+      <td>${cell(e, "turbidity")}</td>
+      <td style="color:${STATUS_COLOR[s]};font-weight:bold">${RELEASE_META[s].label}</td>
     </tr>`;
   }).join("");
 
@@ -198,13 +148,10 @@ function exportTrendsPDF(data, timeLabel) {
     <thead><tr><th>Timestamp</th><th>Air Temp (°C)</th><th>Water Temp (°C)</th><th>Humidity (%)</th><th>pH</th><th>Turbidity (NTU)</th><th>Release Status</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
+  <p class="meta" style="margin-top:12px">Struck-through values are physically impossible probe readings (sensor fault) and are excluded from the release decision.</p>
   </body></html>`;
 
-  const win = window.open("", "_blank");
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(() => { win.print(); }, 400);
+  printDocument(html);
 }
 
 export default function HistoricalTrends() {
@@ -216,10 +163,10 @@ export default function HistoricalTrends() {
   const [showAnalytics, setShowAnalytics] = useState(true);
 
   useEffect(() => {
-    // Limit to last 500 readings at database level to maintain high UI performance and low bandwidth usage
-    const historyQuery = query(ref(db, DB_PATHS.READINGS), limitToLast(500));
+    // Fetch the selectable month, rather than only ~42 hours of 5-minute samples.
+    const historyQuery = query(ref(db, DB_PATHS.READINGS), orderByChild("timestamp"), startAt(Date.now() - TIME_RANGES.month));
 
-    onValue(
+    const unsubscribe = onValue(
       historyQuery,
       (snapshot) => {
         const data = snapshot.val();
@@ -238,11 +185,11 @@ export default function HistoricalTrends() {
                 month: "short",
                 day: "numeric",
               }),
-              air_temperature: entry.air_temperature ?? null,
-              temperature: entry.temperature ?? null,
-              humidity: entry.humidity ?? null,
-              ph: entry.ph ?? null,
-              turbidity: entry.turbidity ?? null,
+              // Faulty probe values (e.g. -127 °C, pH 23) become null so they
+              // never distort charts or statistics; raw values kept for export.
+              ...pickSensors(evaluateReading(entry).clean),
+              raw: pickSensors(entry),
+              release: releaseStatus(entry),
             }));
           setAllHistory(entries);
           setConnectionState("live");
@@ -258,12 +205,12 @@ export default function HistoricalTrends() {
       },
     );
 
-    return () => off(historyQuery);
+    return unsubscribe;
   }, []);
 
   const now = Date.now();
   const filteredHistory = allHistory.filter(
-    (entry) => entry.timestamp >= now - TIME_RANGES[timeRange],
+    (entry) => entry.timestamp >= now - TIME_RANGES[timeRange] && entry.timestamp <= now,
   );
 
   const chartData = filteredHistory.map((entry) => ({
@@ -274,16 +221,16 @@ export default function HistoricalTrends() {
 
   const hasData = chartData.length > 0;
 
-  // ── Data Analytics ─────────────────────────────────────────────────────────
+  // ── Reading summary ─────────────────────────────────────────────────────────
   const analytics = useMemo(() => {
     if (filteredHistory.length === 0) return null;
 
-    const sensorStats = SENSOR_META.map(({ key, name, unit }) => {
+    const sensorStats = SENSOR_META.map(({ key, name, unit, type }) => {
       const values = filteredHistory
         .map((e) => e[key])
         .filter((v) => v !== null && v !== undefined);
 
-      if (values.length === 0) return { key, name, unit, noData: true };
+      if (values.length === 0) return { key, name, unit, type, noData: true };
 
       const t = THRESHOLDS[key];
       const min = Math.min(...values);
@@ -294,28 +241,83 @@ export default function HistoricalTrends() {
       ).length;
       const pctSafe = (safeCount / values.length) * 100;
 
-      return { key, name, unit, min, max, avg, pctSafe, count: values.length };
+      return { key, name, unit, type, min, max, avg, pctSafe, count: values.length };
     });
 
-    const goReadyCount = filteredHistory.filter((e) => {
-      const s = readingReleaseStatus(e);
-      return s === "go" || s === "go_caution";
-    }).length;
-    const goReadiness = (goReadyCount / filteredHistory.length) * 100;
-
-    const allSafeCount = filteredHistory.filter((e) => {
-      const s = readingReleaseStatus(e);
-      return s === "go";
-    }).length;
-    const pctAllSafe = (allSafeCount / filteredHistory.length) * 100;
+    // Readings with a faulty water probe can't be judged — report them separately
+    const faultCount = filteredHistory.filter((e) => e.release === "fault" || e.release === "unknown").length;
+    const judged = filteredHistory.length - faultCount;
+    const goReadyCount = filteredHistory.filter((e) => RELEASE_META[e.release].allowed).length;
+    const goReadiness = judged ? (goReadyCount / judged) * 100 : null;
+    const allSafeCount = filteredHistory.filter((e) => e.release === "go").length;
+    const pctAllSafe = judged ? (allSafeCount / judged) * 100 : null;
 
     return {
       sensorStats,
       goReadiness,
       pctAllSafe,
+      faultCount,
       totalReadings: filteredHistory.length,
     };
   }, [filteredHistory]);
+
+  const valueTone = (key, v) => {
+    const t = THRESHOLDS[key];
+    if (v < t.cautionMin || v > t.cautionMax) return "text-danger";
+    if (v < t.safeMin || v > t.safeMax) return "text-caution";
+    return "text-safe";
+  };
+  const pctTone = (p, kind) =>
+    p >= 80 ? `${kind}-safe` : p >= 50 ? `${kind}-caution` : `${kind}-danger`;
+
+  const renderStatsTable = (title, statsArray) => (
+    <div className="mt-5">
+      <h3 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">{title}</h3>
+      <div className="overflow-x-auto rounded-xl border border-secondary">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-secondary/30 border-b border-secondary">
+              <th className="py-2.5 px-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Parameter</th>
+              <th className="py-2.5 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Min</th>
+              <th className="py-2.5 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Average</th>
+              <th className="py-2.5 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">Max</th>
+              <th className="py-2.5 px-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider min-w-[160px]">% in Safe Range</th>
+            </tr>
+          </thead>
+          <tbody>
+            {statsArray.map((s) =>
+              s.noData ? (
+                <tr key={s.key} className="border-b border-secondary/40 last:border-0">
+                  <td className="py-3 px-4 font-medium text-foreground">{s.name}</td>
+                  <td colSpan={4} className="py-3 px-4 text-center text-xs text-muted-foreground italic">
+                    No valid data in this range
+                  </td>
+                </tr>
+              ) : (
+                <tr key={s.key} className="border-b border-secondary/40 last:border-0 hover:bg-secondary/10 transition-colors">
+                  <td className="py-3 px-4 font-medium text-foreground">
+                    {s.name}
+                    <span className="block text-xs text-muted-foreground font-normal">{s.count} valid readings</span>
+                  </td>
+                  <td className={`py-3 px-4 text-center font-mono text-xs ${valueTone(s.key, s.min)}`}>{truncTo2(s.min)} {s.unit}</td>
+                  <td className={`py-3 px-4 text-center font-mono text-xs font-bold ${valueTone(s.key, s.avg)}`}>{truncTo2(s.avg)} {s.unit}</td>
+                  <td className={`py-3 px-4 text-center font-mono text-xs ${valueTone(s.key, s.max)}`}>{truncTo2(s.max)} {s.unit}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${pctTone(s.pctSafe, "bg")}`} style={{ width: `${s.pctSafe}%` }} />
+                      </div>
+                      <span className={`text-xs font-bold w-10 text-right shrink-0 ${pctTone(s.pctSafe, "text")}`}>{s.pctSafe.toFixed(0)}%</span>
+                    </div>
+                  </td>
+                </tr>
+              ),
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 
   // High-contrast editorial tooltip
   const CustomTooltip = ({ active, payload, label, unit }) => {
@@ -326,10 +328,10 @@ export default function HistoricalTrends() {
           ? `${(Math.floor(Number(val) * 100) / 100).toFixed(2)} ${unit || ""}`
           : "—";
       return (
-        <div className="bg-[#1a1714] text-[#fffaf2] p-2.5 rounded-lg text-xs shadow-xl border border-[#38332e]">
-          <p className="font-semibold text-[#a8a29e] mb-1 text-[11px] font-mono">{label}</p>
-          <p className="font-bold text-white text-sm font-mono tracking-tight">
-            Value: <span className="text-[#f5f0eb]">{formattedVal}</span>
+        <div className="bg-popover text-popover-foreground p-2.5 rounded-lg text-xs shadow-xl border border-border">
+          <p className="font-semibold text-muted-foreground mb-1 text-xs font-mono">{label}</p>
+          <p className="font-bold text-foreground text-sm font-mono tracking-tight">
+            Value: <span className="text-foreground">{formattedVal}</span>
           </p>
         </div>
       );
@@ -341,29 +343,29 @@ export default function HistoricalTrends() {
   const renderChartComponent = (sensorKey, color, domain, unit) => {
     const threshold = THRESHOLDS[sensorKey];
     const yDomain = domain || [0, "auto"];
-    const strokeColor = "#1e3a8a";
+    const strokeColor = "hsl(var(--primary))";
 
     return (
       <ResponsiveContainer width="100%" height={250}>
         {graphType === "line" && (
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ebe4d4" />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#7c7366" }} interval="preserveStartEnd" />
-            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#7c7366" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--primary))" }} interval="preserveStartEnd" />
+            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "hsl(var(--primary))" }} />
             <Tooltip content={<CustomTooltip unit={unit} />} />
             {threshold.safeMin !== undefined && (
               <ReferenceLine
                 y={threshold.safeMin}
-                stroke="#15803d"
+                stroke="hsl(var(--safe))"
                 strokeDasharray="5 4"
-                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "#15803d" }}
+                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "hsl(var(--safe))" }}
               />
             )}
             <ReferenceLine
               y={threshold.safeMax}
-              stroke="#9a3412"
+              stroke="hsl(var(--danger))"
               strokeDasharray="5 4"
-              label={{ value: "Cap Limit", position: "right", fontSize: 10, fill: "#9a3412" }}
+              label={{ value: "Safe Max", position: "right", fontSize: 10, fill: "hsl(var(--danger))" }}
             />
             <Line
               type="monotone"
@@ -380,27 +382,27 @@ export default function HistoricalTrends() {
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id={`metFill-${sensorKey}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#1e3a8a" stopOpacity={0.28} />
-                <stop offset="100%" stopColor="#1e3a8a" stopOpacity={0.0} />
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.28} />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ebe4d4" />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#7c7366" }} interval="preserveStartEnd" />
-            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#7c7366" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--primary))" }} interval="preserveStartEnd" />
+            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "hsl(var(--primary))" }} />
             <Tooltip content={<CustomTooltip unit={unit} />} />
             {threshold.safeMin !== undefined && (
               <ReferenceLine
                 y={threshold.safeMin}
-                stroke="#15803d"
+                stroke="hsl(var(--safe))"
                 strokeDasharray="5 4"
-                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "#15803d" }}
+                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "hsl(var(--safe))" }}
               />
             )}
             <ReferenceLine
               y={threshold.safeMax}
-              stroke="#9a3412"
+              stroke="hsl(var(--danger))"
               strokeDasharray="5 4"
-              label={{ value: "Cap Limit", position: "right", fontSize: 10, fill: "#9a3412" }}
+              label={{ value: "Safe Max", position: "right", fontSize: 10, fill: "hsl(var(--danger))" }}
             />
             <Area
               type="monotone"
@@ -416,25 +418,25 @@ export default function HistoricalTrends() {
 
         {graphType === "bar" && (
           <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ebe4d4" />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#7c7366" }} interval="preserveStartEnd" />
-            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#7c7366" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--primary))" }} interval="preserveStartEnd" />
+            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "hsl(var(--primary))" }} />
             <Tooltip content={<CustomTooltip unit={unit} />} />
             {threshold.safeMin !== undefined && (
               <ReferenceLine
                 y={threshold.safeMin}
-                stroke="#15803d"
+                stroke="hsl(var(--safe))"
                 strokeDasharray="5 4"
-                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "#15803d" }}
+                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "hsl(var(--safe))" }}
               />
             )}
             <ReferenceLine
               y={threshold.safeMax}
-              stroke="#9a3412"
+              stroke="hsl(var(--danger))"
               strokeDasharray="5 4"
-              label={{ value: "Cap Limit", position: "right", fontSize: 10, fill: "#9a3412" }}
+              label={{ value: "Safe Max", position: "right", fontSize: 10, fill: "hsl(var(--danger))" }}
             />
-            <Bar dataKey={sensorKey} fill="#1e3a8a" radius={[4, 4, 0, 0]} />
+            <Bar dataKey={sensorKey} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
           </BarChart>
         )}
       </ResponsiveContainer>
@@ -451,7 +453,7 @@ export default function HistoricalTrends() {
               Historical Water Quality Trends
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Visualize sensor patterns and long-term release parameters
+              See how water and air measurements changed over time.
             </p>
           </div>
 
@@ -490,7 +492,7 @@ export default function HistoricalTrends() {
                     title={gt.desc}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs transition-all ${
                       active
-                        ? "bg-white text-primary shadow-sm border border-secondary"
+                        ? "bg-card text-primary shadow-sm border border-secondary"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -509,7 +511,7 @@ export default function HistoricalTrends() {
                   onClick={() => setTimeRange(range)}
                   className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-colors ${
                     timeRange === range
-                      ? "bg-primary text-white"
+                      ? "bg-primary text-primary-foreground"
                       : "bg-secondary text-foreground hover:bg-secondary/80"
                   }`}
                 >
@@ -524,7 +526,7 @@ export default function HistoricalTrends() {
         {connectionState === "connecting" && (
           <div className="mb-6 flex items-center gap-3 bg-secondary/40 border border-secondary rounded-xl px-5 py-3 text-sm text-muted-foreground">
             <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
-            Connecting to Firebase...
+            Loading saved readings…
           </div>
         )}
 
@@ -539,13 +541,13 @@ export default function HistoricalTrends() {
         {connectionState === "live" && !hasData && (
           <div className="mb-6 bg-secondary/30 border border-secondary rounded-xl px-5 py-8 text-center text-muted-foreground text-sm">
             No sensor history found for the selected time range. Data will
-            appear here once the Arduino begins transmitting.
+            appear here when the station sends readings.
           </div>
         )}
 
-        {/* ── Data Analytics Section ─────────────────────────────────────────── */}
+        {/* ── Reading summary Section ─────────────────────────────────────────── */}
         {hasData && analytics && (
-          <div className="mb-6 bg-white rounded-xl border border-secondary shadow-sm overflow-hidden">
+          <div className="mb-6 bg-card rounded-xl border border-secondary shadow-sm overflow-hidden">
             {/* Analytics header / toggle */}
             <button
               onClick={() => setShowAnalytics(!showAnalytics)}
@@ -557,7 +559,7 @@ export default function HistoricalTrends() {
                 </span>
                 <div className="text-left">
                   <p className="text-sm font-header font-bold text-foreground">
-                    Data Analytics
+                    Reading summary
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {analytics.totalReadings} readings ·{" "}
@@ -572,11 +574,11 @@ export default function HistoricalTrends() {
 
             {showAnalytics && (
               <div className="border-t border-secondary px-5 pb-5 pt-4">
-                {/* GO-Readiness Score */}
+                {/* Past GO results */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
                   <div className="p-4 rounded-xl bg-secondary/20 border border-secondary/40">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                      GO-Readiness Score
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                      Past GO results
                     </p>
                     <p
                       className={`text-3xl font-header font-bold leading-none ${
@@ -587,10 +589,10 @@ export default function HistoricalTrends() {
                             : "text-danger"
                       }`}
                     >
-                      {analytics.goReadiness.toFixed(1)}%
+                      {analytics.goReadiness === null ? "No usable readings" : analytics.goReadiness.toFixed(1) + "%"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      % of readings fit for release (GO or GO with Caution)
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Share of usable readings marked GO or GO with caution.
                     </p>
                     <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
                       <div
@@ -601,13 +603,13 @@ export default function HistoricalTrends() {
                               ? "bg-caution"
                               : "bg-danger"
                         }`}
-                        style={{ width: `${analytics.goReadiness}%` }}
+                        style={{ width: `${analytics.goReadiness ?? 0}%` }}
                       />
                     </div>
                   </div>
 
                   <div className="p-4 rounded-xl bg-secondary/20 border border-secondary/40">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Fully Safe Readings
                     </p>
                     <p
@@ -619,10 +621,10 @@ export default function HistoricalTrends() {
                             : "text-danger"
                       }`}
                     >
-                      {analytics.pctAllSafe.toFixed(1)}%
+                      {analytics.pctAllSafe === null ? "No usable readings" : analytics.pctAllSafe.toFixed(1) + "%"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      % of readings where ALL water quality parameters were in safe range
+                    <p className="text-xs text-muted-foreground mt-1">
+                      % of valid readings where all 3 water parameters were safe
                     </p>
                     <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
                       <div
@@ -633,94 +635,42 @@ export default function HistoricalTrends() {
                               ? "bg-caution"
                               : "bg-danger"
                         }`}
-                        style={{ width: `${analytics.pctAllSafe}%` }}
+                        style={{ width: `${analytics.pctAllSafe ?? 0}%` }}
                       />
                     </div>
                   </div>
 
                   <div className="p-4 rounded-xl bg-secondary/20 border border-secondary/40">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Total Readings
                     </p>
                     <p className="text-3xl font-header font-bold text-primary leading-none">
                       {analytics.totalReadings}
                     </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      Sensor readings captured during {TIME_LABELS[timeRange].toLowerCase()}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Captured during {TIME_LABELS[timeRange].toLowerCase()}
+                      {analytics.faultCount > 0 && (
+                        <>
+                          {" · "}
+                          <span className="font-bold text-muted-foreground">
+                            {analytics.faultCount} with a water-sensor fault
+                          </span>{" "}
+                          (excluded from the % scores)
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>
 
-                {/* Per-Sensor Stats Table */}
-                <div className="overflow-x-auto rounded-xl border border-secondary">
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="bg-secondary/30 border-b border-secondary">
-                        <th className="py-2.5 px-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                          Parameter
-                        </th>
-                        <th className="py-2.5 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                          Min
-                        </th>
-                        <th className="py-2.5 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                          Average
-                        </th>
-                        <th className="py-2.5 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                          Max
-                        </th>
-                        <th className="py-2.5 px-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider min-w-[160px]">
-                          % in Safe Range
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {analytics.sensorStats.map((s) => {
-                        if (s.noData)
-                          return (
-                            <tr key={s.key} className="border-b border-secondary/40">
-                              <td className="py-3 px-4 font-medium text-foreground">
-                                {s.name}
-                              </td>
-                              <td colSpan={4} className="py-3 px-4 text-center text-xs text-muted-foreground italic">
-                                No data available
-                              </td>
-                            </tr>
-                          );
-
-                        const t = THRESHOLDS[s.key];
-                        const minStatus = s.min < t.safeMin || s.min > t.safeMax ? "text-caution" : "text-safe";
-                        const maxStatus = s.max < t.safeMin || s.max > t.safeMax ? "text-caution" : "text-safe";
-                        const avgStatus = s.avg < t.safeMin || s.avg > t.safeMax ? "text-caution font-bold" : "text-safe font-bold";
-
-                        return (
-                          <tr key={s.key} className="border-b border-secondary/40 hover:bg-secondary/10 transition-colors">
-                            <td className="py-3 px-4 font-medium text-foreground">{s.name}</td>
-                            <td className={`py-3 px-4 text-center font-mono text-xs ${minStatus}`}>{truncTo2(s.min)} {s.unit}</td>
-                            <td className={`py-3 px-4 text-center font-mono text-xs ${avgStatus}`}>{truncTo2(s.avg)} {s.unit}</td>
-                            <td className={`py-3 px-4 text-center font-mono text-xs ${maxStatus}`}>{truncTo2(s.max)} {s.unit}</td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all ${
-                                      s.pctSafe >= 80 ? "bg-safe" : s.pctSafe >= 50 ? "bg-caution" : "bg-danger"
-                                    }`}
-                                    style={{ width: `${s.pctSafe}%` }}
-                                  />
-                                </div>
-                                <span className={`text-xs font-bold w-10 text-right shrink-0 ${
-                                  s.pctSafe >= 80 ? "text-safe" : s.pctSafe >= 50 ? "text-caution" : "text-danger"
-                                }`}>
-                                  {s.pctSafe.toFixed(0)}%
-                                </span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                {/* Per-Sensor Stats — water (decision) vs environment (context) */}
+                {renderStatsTable(
+                  "Water Quality — decides GO / NO-GO",
+                  analytics.sensorStats.filter((s) => s.type === "water"),
+                )}
+                {renderStatsTable(
+                  "Environmental Context — not used for the decision",
+                  analytics.sensorStats.filter((s) => s.type === "environment"),
+                )}
               </div>
             )}
           </div>
@@ -730,40 +680,40 @@ export default function HistoricalTrends() {
         {hasData && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Air Temperature */}
-            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm">
-              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
+            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+              <h3 className="text-base font-header font-bold text-foreground mb-4">
                 Air Temperature (°C)
               </h3>
               {renderChartComponent("air_temperature", "hsl(var(--caution))", [0, 50], "°C")}
             </div>
 
             {/* Water Temperature */}
-            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm">
-              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
+            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+              <h3 className="text-base font-header font-bold text-foreground mb-4">
                 Water Temperature (°C)
               </h3>
               {renderChartComponent("temperature", "hsl(var(--primary))", [0, 40], "°C")}
             </div>
 
             {/* Humidity */}
-            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm">
-              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
+            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+              <h3 className="text-base font-header font-bold text-foreground mb-4">
                 Humidity (%)
               </h3>
               {renderChartComponent("humidity", "hsl(var(--accent))", [0, 100], "%")}
             </div>
 
             {/* pH */}
-            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm">
-              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
+            <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+              <h3 className="text-base font-header font-bold text-foreground mb-4">
                 pH Level
               </h3>
               {renderChartComponent("ph", "hsl(var(--caution))", [6, 9], "pH")}
             </div>
 
             {/* Turbidity */}
-            <div className="bg-[#fffaf2] rounded-xl p-6 border border-[#ddd4c4] shadow-sm lg:col-span-2">
-              <h3 className="text-base font-header font-bold text-[#1a1714] mb-4">
+            <div className="bg-card rounded-xl p-6 border border-border shadow-sm lg:col-span-2">
+              <h3 className="text-base font-header font-bold text-foreground mb-4">
                 Turbidity (NTU)
               </h3>
               {renderChartComponent("turbidity", "hsl(var(--danger))", [0, 60], "NTU")}

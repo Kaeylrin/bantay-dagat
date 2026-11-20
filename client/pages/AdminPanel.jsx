@@ -108,17 +108,7 @@ function RangerItem({ ranger }) {
   const handleResetPassword = async () => {
     setBusy(true);
     try {
-      const idToken = await auth.currentUser.getIdToken();
-      const response = await fetch("/api/admin/send-reset-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ email: ranger.email }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to send reset email.");
+      await sendPasswordResetEmail(auth, ranger.email);
 
       showFeedback(
         "success",
@@ -177,10 +167,10 @@ function RangerItem({ ranger }) {
   };
 
   return (
-    <li className="p-3.5 rounded-lg border border-[#ddd4c4] bg-[#f5f5f4] hover:bg-[#ebe4d4]/50 transition-colors">
+    <li className="p-3.5 rounded-lg border border-border bg-muted hover:bg-secondary/50 transition-colors">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-[#1e3a8a] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+          <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
             {(ranger.displayName || ranger.email).charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
@@ -195,12 +185,12 @@ function RangerItem({ ranger }) {
                     if (e.key === "Escape") setEditing(false);
                   }}
                   autoFocus
-                  className="px-2 py-0.5 rounded border border-[#1e3a8a] bg-white text-[#1a1714] text-xs w-40 focus:outline-none"
+                  className="px-2 py-0.5 rounded border border-primary bg-card text-foreground text-xs w-40 focus:outline-none"
                 />
                 <button
                   onClick={handleSaveName}
                   disabled={busy}
-                  className="p-0.5 text-[#15803d] hover:text-[#15803d]/80"
+                  className="p-0.5 text-safe hover:text-safe/80"
                   title="Save"
                 >
                   <Check className="w-3.5 h-3.5" />
@@ -210,21 +200,21 @@ function RangerItem({ ranger }) {
                     setEditing(false);
                     setEditName(ranger.displayName || "");
                   }}
-                  className="p-0.5 text-[#7c7366] hover:text-[#1a1714]"
+                  className="p-0.5 text-muted-foreground hover:text-foreground"
                   title="Cancel"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
-              <p className="text-xs font-bold text-[#1a1714] truncate">
+              <p className="text-xs font-bold text-foreground truncate">
                 {ranger.displayName || "—"}
               </p>
             )}
-            <p className="text-[11px] text-[#7c7366] font-medium truncate">
+            <p className="text-xs text-muted-foreground font-medium truncate">
               {ranger.email}
             </p>
-            <p className="text-[10px] text-[#a8a29e]">
+            <p className="text-xs text-muted-foreground">
               Created:{" "}
               {ranger.createdAt
                 ? new Date(ranger.createdAt).toLocaleDateString("en-PH")
@@ -234,10 +224,10 @@ function RangerItem({ ranger }) {
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <span
-            className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wide ${
+            className={`text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wide ${
               ranger.isActive
-                ? "bg-[#15803d]/10 text-[#15803d]"
-                : "bg-[#9a3412]/10 text-[#9a3412]"
+                ? "bg-safe/10 text-safe"
+                : "bg-danger/10 text-danger"
             }`}
           >
             {ranger.isActive ? "Active" : "Disabled"}
@@ -298,7 +288,7 @@ function RangerItem({ ranger }) {
           <button
             onClick={handleDelete}
             disabled={busy}
-            className="px-2 py-1 text-xs font-bold bg-danger text-white rounded hover:bg-danger/80 disabled:opacity-50"
+            className="px-2 py-1 text-xs font-bold bg-danger text-white dark:text-primary-foreground rounded hover:bg-danger/80 disabled:opacity-50"
           >
             {busy ? "Deleting…" : "Yes, Delete"}
           </button>
@@ -440,20 +430,20 @@ export default function AdminPanel() {
     <Layout>
       <div className="space-y-5 max-w-5xl">
         <div className="mb-6">
-          <h2 className="text-xl sm:text-2xl font-header font-bold text-[#1a1714] tracking-tight">
-            Administrative Command & Account Management
+          <h2 className="text-xl sm:text-2xl font-header font-bold text-foreground tracking-tight">
+            Ranger accounts
           </h2>
-          <p className="text-xs text-[#7c7366] mt-1">
-            Provision staff ranger accounts, reset security credentials, and manage system access permissions.
+          <p className="text-xs text-muted-foreground mt-1">
+            Add rangers, send password reset links and manage who can sign in.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
           {/* ── Create Account ── */}
-          <div className="bg-[#fffaf2] rounded-xl border border-[#ddd4c4] shadow-sm p-6">
-            <h3 className="text-base font-header font-bold text-[#1a1714] mb-5 flex items-center gap-2">
-              <UserPlus className="w-4 h-4 text-[#1e3a8a]" />
-              Provision Ranger Account
+          <div className="bg-card rounded-xl border border-border shadow-sm p-6">
+            <h3 className="text-base font-header font-bold text-foreground mb-5 flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-primary" />
+              Add a ranger
             </h3>
 
             <form
@@ -462,7 +452,7 @@ export default function AdminPanel() {
               autoComplete="off"
             >
               <div>
-                <label className="block text-xs font-semibold text-[#1a1714] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-1">
                   Full Name
                 </label>
                 <input
@@ -471,12 +461,12 @@ export default function AdminPanel() {
                   onChange={field("displayName")}
                   placeholder="Juan dela Cruz"
                   autoComplete="off"
-                  className="w-full px-3 py-2 rounded-lg border border-[#ddd4c4] bg-[#f5f5f4] text-[#1a1714] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-muted text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#1a1714] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-1">
                   Gmail Address
                 </label>
                 <input
@@ -485,22 +475,22 @@ export default function AdminPanel() {
                   onChange={field("email")}
                   placeholder="ranger.name@gmail.com"
                   autoComplete="new-email"
-                  className={`w-full px-3 py-2 rounded-lg border bg-[#f5f5f4] text-[#1a1714] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] ${
+                  className={`w-full px-3 py-2 rounded-lg border bg-muted text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary ${
                     form.email &&
                     !form.email.trim().toLowerCase().endsWith("@gmail.com") &&
                     form.email.includes("@")
-                      ? "border-[#9a3412]"
-                      : "border-[#ddd4c4]"
+                      ? "border-danger"
+                      : "border-border"
                   }`}
                 />
-                <p className="text-[11px] text-[#7c7366] mt-1 flex items-center gap-1">
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                   <Mail className="w-3 h-3" />
                   Gmail accounts only — required for password reset delivery.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#1a1714] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-1">
                   Password
                 </label>
                 <div className="relative">
@@ -510,12 +500,12 @@ export default function AdminPanel() {
                     onChange={field("password")}
                     placeholder="••••••••"
                     autoComplete="new-password"
-                    className="w-full px-3 py-2 pr-9 rounded-lg border border-[#ddd4c4] bg-[#f5f5f4] text-[#1a1714] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
+                    className="w-full px-3 py-2 pr-9 rounded-lg border border-border bg-muted text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPw((v) => !v)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#7c7366]"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
                     tabIndex={-1}
                   >
                     {showPw ? (
@@ -528,15 +518,15 @@ export default function AdminPanel() {
 
                 {form.password && strength && (
                   <div className="mt-2">
-                    <div className="h-1.5 bg-[#ddd4c4] rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-border rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${strength.color}`}
                         style={{ width: strength.width }}
                       />
                     </div>
-                    <p className="text-[11px] text-[#7c7366] mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Strength:{" "}
-                      <span className="font-semibold text-[#1a1714]">{strength.label}</span>
+                      <span className="font-semibold text-foreground">{strength.label}</span>
                     </p>
                   </div>
                 )}
@@ -548,7 +538,7 @@ export default function AdminPanel() {
                       return (
                         <li
                           key={r.id}
-                          className={`flex items-center gap-1.5 text-[11px] ${ok ? "text-[#15803d]" : "text-[#7c7366]"}`}
+                          className={`flex items-center gap-1.5 text-xs ${ok ? "text-safe" : "text-muted-foreground"}`}
                         >
                           {ok ? (
                             <CheckCircle2 className="w-3 h-3" />
@@ -564,7 +554,7 @@ export default function AdminPanel() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#1a1714] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-1">
                   Confirm Password
                 </label>
                 <input
@@ -573,26 +563,26 @@ export default function AdminPanel() {
                   onChange={field("confirm")}
                   placeholder="••••••••"
                   autoComplete="new-password"
-                  className={`w-full px-3 py-2 rounded-lg border bg-[#f5f5f4] text-[#1a1714] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] ${
+                  className={`w-full px-3 py-2 rounded-lg border bg-muted text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary ${
                     form.confirm && form.confirm !== form.password
-                      ? "border-[#9a3412]"
-                      : "border-[#ddd4c4]"
+                      ? "border-danger"
+                      : "border-border"
                   }`}
                 />
                 {form.confirm && form.confirm !== form.password && (
-                  <p className="text-[11px] text-[#9a3412] mt-1">
+                  <p className="text-xs text-danger mt-1">
                     Passwords do not match.
                   </p>
                 )}
               </div>
 
               {formError && (
-                <div className="bg-[#9a3412]/10 border border-[#9a3412]/30 rounded-lg p-3 text-xs text-[#9a3412]">
+                <div className="bg-danger/10 border border-danger/30 rounded-lg p-3 text-xs text-danger">
                   {formError}
                 </div>
               )}
               {formSuccess && (
-                <div className="bg-[#15803d]/10 border border-[#15803d]/30 rounded-lg p-3 text-xs text-[#15803d] flex items-center gap-2">
+                <div className="bg-safe/10 border border-safe/30 rounded-lg p-3 text-xs text-safe flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   {formSuccess}
                 </div>
@@ -601,7 +591,7 @@ export default function AdminPanel() {
               <button
                 type="submit"
                 disabled={creating}
-                className="w-full bg-[#1e3a8a] text-white font-semibold text-xs py-2.5 rounded-lg hover:bg-[#1e3a8a]/90 transition-colors disabled:opacity-50 mt-1 shadow-sm"
+                className="w-full bg-primary text-primary-foreground font-semibold text-xs py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 mt-1 shadow-sm"
               >
                 {creating ? (
                   <span className="flex items-center justify-center gap-2">
@@ -615,24 +605,24 @@ export default function AdminPanel() {
           </div>
 
           {/* ── Rangers List ── */}
-          <div className="bg-[#fffaf2] rounded-xl border border-[#ddd4c4] shadow-sm p-6">
-            <h3 className="text-base font-header font-bold text-[#1a1714] mb-5 flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#1e3a8a]" />
+          <div className="bg-card rounded-xl border border-border shadow-sm p-6">
+            <h3 className="text-base font-header font-bold text-foreground mb-5 flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
               Active Staff Rangers ({rangers.length})
             </h3>
 
             {listError && (
-              <div className="bg-[#9a3412]/10 border border-[#9a3412]/30 rounded-lg p-3 text-xs text-[#9a3412] mb-4">
+              <div className="bg-danger/10 border border-danger/30 rounded-lg p-3 text-xs text-danger mb-4">
                 Failed to load rangers: {listError}
               </div>
             )}
 
             {loadingList ? (
-              <div className="flex items-center gap-2 text-[#7c7366] text-xs py-4">
-                <RefreshCw className="w-4 h-4 animate-spin text-[#1e3a8a]" /> Loading staff roster…
+              <div className="flex items-center gap-2 text-muted-foreground text-xs py-4">
+                <RefreshCw className="w-4 h-4 animate-spin text-primary" /> Loading staff roster…
               </div>
             ) : rangers.length === 0 && !listError ? (
-              <p className="text-[#7c7366] text-xs py-4">
+              <p className="text-muted-foreground text-xs py-4">
                 No ranger accounts configured yet.
               </p>
             ) : (
@@ -645,19 +635,19 @@ export default function AdminPanel() {
 
             {/* Actions legend */}
             {rangers.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-[#ddd4c4]">
-                <div className="flex flex-wrap gap-3 text-[10px] text-[#7c7366] font-medium">
+              <div className="mt-4 pt-3 border-t border-border">
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground font-medium">
                   <span className="flex items-center gap-1">
-                    <Pencil className="w-3 h-3 text-[#1e3a8a]" /> Edit Name
+                    <Pencil className="w-3 h-3 text-primary" /> Edit Name
                   </span>
                   <span className="flex items-center gap-1">
-                    <KeyRound className="w-3 h-3 text-[#1e3a8a]" /> Reset Password
+                    <KeyRound className="w-3 h-3 text-primary" /> Reset Password
                   </span>
                   <span className="flex items-center gap-1">
-                    <ShieldOff className="w-3 h-3 text-[#b45309]" /> Toggle Active
+                    <ShieldOff className="w-3 h-3 text-caution" /> Toggle Active
                   </span>
                   <span className="flex items-center gap-1">
-                    <Trash2 className="w-3 h-3 text-[#9a3412]" /> Delete Account
+                    <Trash2 className="w-3 h-3 text-danger" /> Delete Account
                   </span>
                 </div>
               </div>

@@ -24,17 +24,13 @@ dist-ssr
 *.sw?
 
 .config/
-
-
-# Firebase Admin SDK service account key (NEVER commit)
-firebase-service-account*.json
-
-.vercel
-
-# Private configuration and credentials stay local
+# Environment values stay local. Only a placeholder template may be committed.
 .env
 .env.*
 !.env.example
+
+# Firebase Admin SDK service account key (NEVER commit)
+firebase-service-account*.json
 *service-account*.json
 *service_account*.json
 *.pem
@@ -42,3 +38,14 @@ firebase-service-account*.json
 *.p12
 *.pfx
 .secrets/
+
+.vercel
+
+# Local browser-test artifacts
+playwright-report/
+test-results/
+
+# Local migration helpers and research notes
+fix.cjs
+update-historical.cjs
+docs/threshold-recommendation-2026-10-22.md

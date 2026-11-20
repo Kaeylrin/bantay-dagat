@@ -1,3 +1,4 @@
+import { printDocument, escapeHtml } from "@/lib/printExport";
 import { useState, useEffect, useMemo } from "react";
 import Layout from "@/components/Layout";
 import {
@@ -18,58 +19,34 @@ import {
   db,
   ref,
   onValue,
-  off,
   mapArduinoReading,
   DB_PATHS,
 } from "@/lib/firebase";
+import { SENSORS, evaluateReading, releaseStatus, RELEASE_META } from "@/lib/sensors";
 
-const THRESHOLDS = {
-  air_temperature: { safe: [25, 32], caution: [22, 35] },
-  temperature: { safe: [26, 31], caution: [24, 33] },
-  humidity: { safe: [65, 85], caution: [55, 90] },
-  ph: { safe: [7.8, 8.3], caution: [7.5, 8.5] },
-  turbidity: { safe: [0, 25], caution: [0, 50] },
-};
+const SENSOR_META = Object.fromEntries(
+  SENSORS.map((s) => [s.key, { label: s.name, unit: s.unit }]),
+);
 
-const SENSOR_META = {
-  air_temperature: { label: "Air Temp", unit: "°C" },
-  temperature: { label: "Water Temp", unit: "°C" },
-  humidity: { label: "Humidity", unit: "%" },
-  ph: { label: "pH Level", unit: "pH" },
-  turbidity: { label: "Turbidity", unit: "NTU" },
-};
-
-function deriveStatus(key, value) {
-  if (value === null || value === undefined) return "unknown";
-  const t = THRESHOLDS[key];
-  if (!t) return "unknown";
-  if (value < t.caution[0] || value > t.caution[1]) return "danger";
-  if (value < t.safe[0] || value > t.safe[1]) return "caution";
-  return "safe";
+// Per-cell status; impossible probe values show as "fault" instead of "danger"
+function deriveStatus(key, value, reading) {
+  return evaluateReading(reading ?? { [key]: value })?.sensors[key]?.status ?? "unknown";
 }
 
+// Overall release status — shared rule (water sensors only). "go" is shown as
+// "safe" in this page's filters.
 function overallStatus(reading) {
-  // Only evaluate water quality parameters for the overall release status
-  const waterKeys = ["temperature", "ph", "turbidity"];
-  const statuses = waterKeys.map((k) => deriveStatus(k, reading[k]));
-  
-  const dangerCount = statuses.filter((s) => s === "danger").length;
-  const cautionCount = statuses.filter((s) => s === "caution").length;
-  const unknownCount = statuses.filter((s) => s === "unknown").length;
-
-  if (dangerCount >= 1) return "danger";
-  if (cautionCount >= 2) return "nogo_caution";
-  if (cautionCount === 1) return "go_caution";
-  if (unknownCount === waterKeys.length) return "unknown";
-  return "safe";
+  const s = releaseStatus(reading);
+  return s === "go" ? "safe" : s;
 }
 
 const statusBadge = (s) =>
   ({
     safe: "bg-safe/20 text-safe",
     go_caution: "bg-caution/20 text-caution",
-    nogo_caution: "bg-orange-500/20 text-orange-600",
+    nogo_caution: "bg-orange-500/20 text-orange-600 dark:bg-caution/20 dark:text-caution",
     danger: "bg-danger/20 text-danger",
+    fault: "bg-stone-500/15 text-stone-600 dark:bg-secondary dark:text-foreground",
   })[s] ?? "bg-secondary text-muted-foreground";
 
 const statusLabel = (s) =>
@@ -78,6 +55,8 @@ const statusLabel = (s) =>
     go_caution: "GO (CAUTION)",
     nogo_caution: "NO-GO (CAUTION)",
     danger: "NO-GO (DANGER)",
+    fault: RELEASE_META.fault.label,
+    unknown: RELEASE_META.unknown.label,
   })[s] ?? String(s).toUpperCase();
 
 const cellColor = (s) =>
@@ -85,6 +64,7 @@ const cellColor = (s) =>
     safe: "text-safe",
     caution: "text-caution font-semibold",
     danger: "text-danger font-bold",
+    fault: "text-stone-400 dark:text-muted-foreground line-through",
   })[s] ?? "text-muted-foreground";
 
 // Truncates to exactly 2 decimal places WITHOUT rounding
@@ -128,15 +108,15 @@ function exportLogsCSV(data) {
 
 function exportLogsPDF(data) {
   const sensorMeta = Object.entries(SENSOR_META);
-  const statusColors = { safe: "#16a34a", go_caution: "#d97706", nogo_caution: "#ea580c", danger: "#dc2626" };
+  const statusColors = { safe: "#16a34a", go_caution: "#d97706", nogo_caution: "#ea580c", danger: "#dc2626", fault: "#57534e" };
   const sensorRows = sensorMeta.map(([, m]) => `<th>${m.label}<br/><span style="font-weight:normal;font-size:10px">(${m.unit})</span></th>`).join("");
 
   const bodyRows = data.map((row) => {
     const overall = overallStatus(row);
     const color = statusColors[overall] ?? "#666";
     const cells = sensorMeta.map(([k, m]) => {
-      const s = deriveStatus(k, row[k]);
-      const cellCol = s === "danger" ? "#dc2626" : s === "caution" ? "#d97706" : "#16a34a";
+      const s = deriveStatus(k, row[k], row);
+      const cellCol = s === "danger" ? "#dc2626" : s === "caution" ? "#d97706" : s === "fault" ? "#a8a29e" : "#16a34a";
       const val = row[k] != null ? (Math.floor(Number(row[k]) * 100) / 100).toFixed(2) : "\u2014";
       return `<td style="color:${cellCol}">${val}</td>`;
     }).join("");
@@ -167,11 +147,7 @@ function exportLogsPDF(data) {
   </table>
   </body></html>`;
 
-  const win = window.open("", "_blank");
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(() => { win.print(); }, 400);
+  printDocument(html);
 }
 
 export default function AlertLogs() {
@@ -185,7 +161,7 @@ export default function AlertLogs() {
   useEffect(() => {
     const histRef = ref(db, DB_PATHS.READINGS);
 
-    onValue(
+    const unsubscribe = onValue(
       histRef,
       (snap) => {
         const data = snap.val();
@@ -208,9 +184,7 @@ export default function AlertLogs() {
       },
     );
 
-    return () => {
-      off(histRef);
-    };
+    return unsubscribe;
   }, []);
 
   const dataset = readings;
@@ -218,7 +192,9 @@ export default function AlertLogs() {
   const sorted = useMemo(() => {
     let list = [...dataset];
 
-    if (filterStatus !== "all") {
+    if (filterStatus === "caution") {
+      list = list.filter((r) => ["go_caution", "nogo_caution"].includes(overallStatus(r)));
+    } else if (filterStatus !== "all") {
       list = list.filter((r) => overallStatus(r) === filterStatus);
     }
 
@@ -226,7 +202,7 @@ export default function AlertLogs() {
       const q = searchQuery.toLowerCase();
       list = list.filter((r) => {
         const tsStr = r.timestamp ? fmtTs(r.timestamp).toLowerCase() : "";
-        const statusStr = (r.status || overallStatus(r)).toLowerCase();
+        const statusStr = `${statusLabel(overallStatus(r))} ${r.status || ""}`.toLowerCase();
         const valStr = Object.keys(SENSOR_META)
           .map((k) => String(r[k] ?? ""))
           .join(" ");
@@ -295,15 +271,15 @@ export default function AlertLogs() {
         <div className="mb-5 space-y-3">
           {/* Quick Preset Filter Chips */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-[#7c7366] uppercase tracking-wider mr-1">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">
               Quick Filter:
             </span>
             <button
               onClick={() => setFilterStatus("all")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "all"
-                  ? "bg-[#1e3a8a] text-white"
-                  : "bg-[#fffaf2] border border-[#ddd4c4] text-[#1a1714] hover:bg-[#f5f0eb]"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card border border-border text-foreground hover:bg-muted"
               }`}
             >
               All Logs ({readings.length})
@@ -312,18 +288,18 @@ export default function AlertLogs() {
               onClick={() => setFilterStatus("danger")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "danger"
-                  ? "bg-[#9a3412] text-white"
-                  : "bg-[#9a3412]/10 border border-[#9a3412]/30 text-[#9a3412] hover:bg-[#9a3412]/20"
+                  ? "bg-danger text-white dark:text-primary-foreground"
+                  : "bg-danger/10 border border-danger/30 text-danger hover:bg-danger/20"
               }`}
             >
               Danger (NO-GO) Only
             </button>
             <button
-              onClick={() => setFilterStatus("nogo_caution")}
+              onClick={() => setFilterStatus("caution")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
-                filterStatus === "nogo_caution"
-                  ? "bg-[#b45309] text-white"
-                  : "bg-[#b45309]/10 border border-[#b45309]/30 text-[#b45309] hover:bg-[#b45309]/20"
+                filterStatus === "caution"
+                  ? "bg-caution text-white dark:text-primary-foreground"
+                  : "bg-caution/10 border border-caution/30 text-caution hover:bg-caution/20"
               }`}
             >
               Caution Only
@@ -332,47 +308,60 @@ export default function AlertLogs() {
               onClick={() => setFilterStatus("safe")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "safe"
-                  ? "bg-[#15803d] text-white"
-                  : "bg-[#15803d]/10 border border-[#15803d]/30 text-[#15803d] hover:bg-[#15803d]/20"
+                  ? "bg-safe text-white dark:text-primary-foreground"
+                  : "bg-safe/10 border border-safe/30 text-safe hover:bg-safe/20"
               }`}
             >
               Safe (GO) Only
+            </button>
+            <button
+              onClick={() => setFilterStatus("fault")}
+              title="Readings where a water probe sent an impossible or missing value"
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
+                filterStatus === "fault"
+                  ? "bg-slate-600 text-white"
+                  : "bg-slate-600/10 border border-slate-600/30 text-muted-foreground hover:bg-slate-600/20"
+              }`}
+            >
+              Sensor Fault
             </button>
           </div>
 
           <div className="flex flex-wrap gap-4 items-center pt-1">
             <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-[#1a1714]">
+              <label className="text-xs font-semibold text-foreground">
                 Status Dropdown:
               </label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-1.5 rounded-lg border border-[#ddd4c4] bg-[#fffaf2] text-[#1a1714] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
+                className="px-3 py-1.5 rounded-lg border border-border bg-card text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="all">All Statuses</option>
                 <option value="safe">GO (All Safe)</option>
+                <option value="caution">All Caution Readings</option>
                 <option value="go_caution">GO (With Caution)</option>
                 <option value="nogo_caution">NO-GO (Caution)</option>
                 <option value="danger">NO-GO (Danger)</option>
+                <option value="fault">Hold (Sensor Fault)</option>
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-[#1a1714]">Sort:</label>
+              <label className="text-xs font-semibold text-foreground">Sort:</label>
               <button
                 onClick={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#ddd4c4] bg-[#fffaf2] text-xs font-medium text-[#1a1714] hover:bg-[#f5f0eb] transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-card text-xs font-medium text-foreground hover:bg-muted transition-colors"
               >
                 Timestamp
                 {sortDir === "desc" ? (
-                  <ChevronDown className="w-3.5 h-3.5 text-[#7c7366]" />
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                 ) : (
-                  <ChevronUp className="w-3.5 h-3.5 text-[#7c7366]" />
+                  <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
                 )}
               </button>
             </div>
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <label className="text-xs font-semibold text-[#1a1714] shrink-0">
+              <label className="text-xs font-semibold text-foreground shrink-0">
                 Search:
               </label>
               <input
@@ -380,7 +369,7 @@ export default function AlertLogs() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search timestamps or values…"
-                className="flex-1 px-3 py-1.5 rounded-lg border border-[#ddd4c4] bg-[#fffaf2] text-[#1a1714] text-xs focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
+                className="flex-1 px-3 py-1.5 rounded-lg border border-border bg-card text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           </div>
@@ -390,7 +379,7 @@ export default function AlertLogs() {
         <div className="md:hidden space-y-3">
           {connectionState === "connecting" ? (
             <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-xs">
-              <RefreshCw className="w-4 h-4 animate-spin" /> Loading telemetry logs…
+              <RefreshCw className="w-4 h-4 animate-spin" /> Loading saved readings…
             </div>
           ) : sorted.length > 0 ? (
             sorted.map((row) => {
@@ -398,27 +387,27 @@ export default function AlertLogs() {
               return (
                 <div
                   key={row.id}
-                  className="bg-[#fffaf2] rounded-xl border border-[#ddd4c4] shadow-sm p-4"
+                  className="bg-card rounded-xl border border-border shadow-sm p-4"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-[#7c7366] font-mono">
+                    <span className="text-xs text-muted-foreground font-mono">
                       {fmtTs(row.timestamp)}
                     </span>
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase ${statusBadge(overall)}`}
+                      className={`px-2 py-0.5 rounded text-xs font-bold tracking-wide uppercase ${statusBadge(overall)}`}
                     >
                       {statusLabel(overall)}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     {sensorKeys.map(([k, m]) => {
-                      const s = deriveStatus(k, row[k]);
+                      const s = deriveStatus(k, row[k], row);
                       return (
                         <div
                           key={k}
                           className="flex items-center justify-between"
                         >
-                          <span className="text-xs text-[#7c7366]">
+                          <span className="text-xs text-muted-foreground">
                             {m.label}
                           </span>
                           <span
@@ -434,7 +423,7 @@ export default function AlertLogs() {
               );
             })
           ) : (
-            <div className="py-8 text-center text-[#7c7366] text-xs">
+            <div className="py-8 text-center text-muted-foreground text-xs">
               {dataset.length === 0
                 ? "No sensor readings found in the database."
                 : "No readings match the selected filter."}
@@ -443,36 +432,36 @@ export default function AlertLogs() {
         </div>
 
         {/* ── Desktop Table (shown >= md) ── */}
-        <div className="hidden md:block bg-[#fffaf2] rounded-xl border border-[#ddd4c4] shadow-sm overflow-hidden">
+        <div className="hidden md:block bg-card rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[#ddd4c4] bg-[#f5f0eb]">
-                  <th className="px-4 py-3 text-left font-header font-bold uppercase tracking-[1px] text-[#7c7366] text-[10px] whitespace-nowrap">
+                <tr className="border-b border-border bg-muted">
+                  <th className="px-4 py-3 text-left font-header font-bold uppercase tracking-[1px] text-muted-foreground text-xs whitespace-nowrap">
                     Timestamp
                   </th>
-                  <th className="px-4 py-3 text-left font-header font-bold uppercase tracking-[1px] text-[#7c7366] text-[10px] whitespace-nowrap">
+                  <th className="px-4 py-3 text-left font-header font-bold uppercase tracking-[1px] text-muted-foreground text-xs whitespace-nowrap">
                     Overall Status
                   </th>
                   {sensorKeys.map(([k, m]) => (
                     <th
                       key={k}
-                      className="px-4 py-3 text-left font-header font-bold uppercase tracking-[1px] text-[#7c7366] text-[10px] whitespace-nowrap"
+                      className="px-4 py-3 text-left font-header font-bold uppercase tracking-[1px] text-muted-foreground text-xs whitespace-nowrap"
                     >
                       {m.label} ({m.unit})
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#ddd4c4]">
+              <tbody className="divide-y divide-border">
                 {connectionState === "connecting" ? (
                   <tr>
                     <td
                       colSpan={2 + sensorKeys.length}
-                      className="px-6 py-8 text-center text-[#7c7366]"
+                      className="px-6 py-8 text-center text-muted-foreground"
                     >
                       <div className="flex items-center justify-center gap-2">
-                        <RefreshCw className="w-4 h-4 animate-spin text-[#1e3a8a]" /> Loading telemetry dataset…
+                        <RefreshCw className="w-4 h-4 animate-spin text-primary" /> Loading saved readings…
                       </div>
                     </td>
                   </tr>
@@ -482,20 +471,20 @@ export default function AlertLogs() {
                     return (
                       <tr
                         key={row.id}
-                        className="hover:bg-[#ebe4d4]/40 transition-colors"
+                        className="hover:bg-secondary/40 transition-colors"
                       >
-                        <td className="px-4 py-2.5 text-[#1a1714] whitespace-nowrap font-mono text-xs">
+                        <td className="px-4 py-2.5 text-foreground whitespace-nowrap font-mono text-xs">
                           {fmtTs(row.timestamp)}
                         </td>
                         <td className="px-4 py-2.5">
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase ${statusBadge(overall)}`}
+                            className={`px-2 py-0.5 rounded text-xs font-bold tracking-wide uppercase ${statusBadge(overall)}`}
                           >
                             {statusLabel(overall)}
                           </span>
                         </td>
                         {sensorKeys.map(([k, m]) => {
-                          const s = deriveStatus(k, row[k]);
+                          const s = deriveStatus(k, row[k], row);
                           return (
                             <td
                               key={k}
@@ -512,22 +501,22 @@ export default function AlertLogs() {
                   <tr>
                     <td
                       colSpan={2 + sensorKeys.length}
-                      className="px-6 py-10 text-center text-[#7c7366]"
+                      className="px-6 py-10 text-center text-muted-foreground"
                     >
                       <div className="flex flex-col items-center justify-center space-y-2">
-                        <FilterX className="w-8 h-8 text-[#a8a29e] mb-1" />
-                        <p className="text-sm font-bold text-[#1a1714]">
-                          No telemetry records match your current filter
+                        <FilterX className="w-8 h-8 text-muted-foreground mb-1" />
+                        <p className="text-sm font-bold text-foreground">
+                          No readings match your filters
                         </p>
-                        <p className="text-xs text-[#7c7366] max-w-sm">
-                          Try adjusting your status filter chip or clearing your search query.
+                        <p className="text-xs text-muted-foreground max-w-sm">
+                          Choose another status or clear the search.
                         </p>
                         <button
                           onClick={() => {
                             setFilterStatus("all");
                             setSearchQuery("");
                           }}
-                          className="mt-2 px-3.5 py-1.5 rounded-lg border border-[#ddd4c4] bg-[#f5f0eb] text-xs font-bold text-[#1e3a8a] hover:bg-[#e8e0ce] transition-colors"
+                          className="mt-2 px-3.5 py-1.5 rounded-lg border border-border bg-muted text-xs font-bold text-primary hover:bg-secondary transition-colors"
                         >
                           Reset Filters & Search
                         </button>
