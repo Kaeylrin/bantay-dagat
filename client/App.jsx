@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/authContext";
 import Login from "./pages/Login";
 import AdminLogin from "./pages/AdminLogin";
@@ -13,6 +14,19 @@ import NotFound from "./pages/NotFound";
 import { RefreshCw } from "lucide-react";
 
 export const LOGIN_FLAG_KEY = "bd_login_in_progress";
+
+function EmailAction() {
+  const { search } = useLocation();
+  const mode = new URLSearchParams(search).get("mode");
+  const delegate = mode && mode !== "resetPassword";
+  useEffect(() => {
+    if (delegate) {
+      const project = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+      window.location.replace(`https://${project}.firebaseapp.com/__/auth/action${search}`);
+    }
+  }, [delegate, search]);
+  return delegate ? <LoadingScreen /> : <ResetPassword />;
+}
 
 function ProtectedRoute({ element }) {
   const { currentUser, loading } = useAuth();
@@ -96,7 +110,7 @@ export default function App() {
           />
           <Route path="/forgot-password" element={<PasswordHelp />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/__/auth/action" element={<ResetPassword />} />
+          <Route path="/__/auth/action" element={<EmailAction />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -348,6 +348,16 @@ test("Firebase email template opens the custom form only for password resets", a
   await expect(page.locator(".access-card")).toContainText("Password updated");
 });
 
+test("other email actions continue on Firebase", async ({page}) => {
+  await setup(page, {signedIn: false});
+  await page.route("https://*.firebaseapp.com/__/auth/action?*", route =>
+    route.fulfill({contentType: "text/plain", body: "Firebase email verification"}));
+  const query = "?mode=verifyEmail&oobCode=example-code&lang=en";
+  await page.goto("/__/auth/action" + query);
+  await expect(page.getByText("Firebase email verification")).toBeVisible();
+  expect(new URL(page.url()).search).toBe(query);
+});
+
 test("appearance follows the device and remembers a manual choice across screens", async ({page}) => {
   await setup(page, {signedIn: false});
   await page.emulateMedia({colorScheme: "dark"});
