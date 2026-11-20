@@ -248,7 +248,7 @@ export default function ResetPassword() {
             <button
               type="submit"
               disabled={!canSubmit || isSubmitting}
-              className="w-full bg-primary text-white font-semibold text-xs py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-sm"
+              className="w-full bg-primary text-primary-foreground font-semibold text-xs py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-sm"
             >
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">

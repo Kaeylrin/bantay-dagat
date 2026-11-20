@@ -62,9 +62,9 @@ const RAPID_TEMP_DELTA = 1.0;
 const TONE = {
   safe: { text: "text-safe", bg: "bg-safe/10", border: "border-safe/30", solid: "bg-safe" },
   caution: { text: "text-caution", bg: "bg-caution/10", border: "border-caution/30", solid: "bg-caution" },
-  warn: { text: "text-[#c2410c]", bg: "bg-[#c2410c]/10", border: "border-[#c2410c]/30", solid: "bg-[#c2410c]" },
+  warn: { text: "text-caution", bg: "bg-[#c2410c]/10", border: "border-[#c2410c]/30", solid: "bg-[#c2410c]" },
   danger: { text: "text-danger", bg: "bg-danger/10", border: "border-danger/40", solid: "bg-danger" },
-  fault: { text: "text-slate-600", bg: "bg-slate-600/10", border: "border-slate-600/30", solid: "bg-slate-600" },
+  fault: { text: "text-muted-foreground", bg: "bg-slate-600/10", border: "border-slate-600/30", solid: "bg-slate-600" },
   muted: { text: "text-muted-foreground", bg: "bg-secondary/40", border: "border-border", solid: "bg-muted-foreground" },
 };
 
@@ -395,7 +395,7 @@ export default function Dashboard() {
                   labelStyle={{ color: "#6E9ECC", fontSize: "10px" }}
                   formatter={(v) => [v != null ? `${truncTo2(v)} ${cfg.unit}` : "—", cfg.name]}
                 />
-                <Line type="monotone" dataKey="value" stroke={isLive ? "#355982" : "#6E9ECC"} dot={false} strokeWidth={1.8} isAnimationActive={false} />
+                <Line type="monotone" dataKey="value" stroke={isLive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"} dot={false} strokeWidth={1.8} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -634,7 +634,7 @@ export default function Dashboard() {
                           </p>
                         </div>
                         {status === "fault" ? (
-                          <span className="text-xs font-semibold text-slate-600 shrink-0">No trend</span>
+                          <span className="text-xs font-semibold text-muted-foreground shrink-0">No trend</span>
                         ) : (
                         <div className="flex flex-col items-end gap-0.5 shrink-0">
                           <span className="flex items-center gap-1 text-xs font-medium text-foreground">

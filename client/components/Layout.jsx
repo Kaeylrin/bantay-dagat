@@ -1,3 +1,4 @@
+import ThemeSelect from "./ThemeSelect";
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -344,13 +345,13 @@ export default function Layout({ children }) {
           title={collapsed ? (userRole === "admin" ? "Administrator" : "Ranger On Duty") : undefined}
           className={`flex items-center h-9 px-3 rounded-lg text-xs font-bold tracking-wide uppercase transition-colors ${
             userRole === "admin"
-              ? "bg-primary text-white shadow-2xs"
+              ? "bg-primary text-primary-foreground shadow-2xs"
               : "bg-muted border border-border text-primary"
           }`}
         >
           <ShieldCheck
             className={`w-3.5 h-3.5 shrink-0 ${
-              userRole === "admin" ? "text-[#fbbf24]" : "text-primary"
+              userRole === "admin" ? "text-primary-foreground" : "text-primary"
             }`}
           />
           <span className={`ml-2 overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap ${collapsed ? "max-w-0 opacity-0" : "max-w-[140px] opacity-100"}`}>
@@ -472,7 +473,7 @@ export default function Layout({ children }) {
                 aria-expanded={menuOpen}
                 className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border bg-card hover:bg-secondary transition-colors"
               >
-                <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center font-header font-bold text-xs">
+                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-header font-bold text-xs">
                   {initial}
                 </div>
                 <div className="text-left hidden sm:block">
@@ -491,6 +492,7 @@ export default function Layout({ children }) {
                     Role:{" "}
                     <span className="font-bold ml-1 capitalize text-foreground">{userRole}</span>
                   </div>
+                  <div className="px-3 py-2"><ThemeSelect /></div>
                   <button
                     onClick={() => {
                       setMenuOpen(false);
@@ -540,7 +542,7 @@ export default function Layout({ children }) {
                     setShowLogoutModal(false);
                     logout();
                   }}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-danger text-white hover:bg-danger/90 transition-colors"
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-danger text-white dark:text-primary-foreground hover:bg-danger/90 transition-colors"
                 >
                   Log Out
                 </button>

@@ -31,7 +31,7 @@ const NotFound = () => {
         </p>
         <Link
           to={returnTo}
-          className="inline-block px-6 py-2.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors"
+          className="inline-block px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
         >
           {returnLabel}
         </Link>

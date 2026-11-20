@@ -363,7 +363,7 @@ export default function AdminLogin() {
         <button
           type="submit"
           disabled={isLoading || isLocked}
-          className="w-full bg-primary text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-sm"
+          className="w-full bg-primary text-primary-foreground font-semibold text-sm py-2.5 rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-sm"
         >
           {isLoading ? "Authenticating Admin…" : "Sign In as Administrator"}
         </button>

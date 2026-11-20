@@ -331,3 +331,31 @@ test("password help, administrator sign-in and reset screens share the account l
   await page.getByRole("button",{name:"Reset Password"}).click();
   await expect(page.locator(".access-card")).toContainText("Password updated");
 });
+
+test("appearance follows the device and remembers a manual choice across screens", async ({page}) => {
+  await setup(page, {signedIn: false});
+  await page.emulateMedia({colorScheme: "dark"});
+  await page.goto("/login");
+  const root = page.locator("html");
+  const appearance = page.getByRole("combobox", {name: "Appearance"});
+  await expect(root).toHaveClass(/dark/);
+  await expect(appearance).toHaveValue("system");
+  await appearance.selectOption("light");
+  await page.reload();
+  await expect(root).toHaveClass(/light/);
+  await page.getByText("Forgot your password?").click();
+  await expect(appearance).toHaveValue("light");
+  await appearance.selectOption("system");
+  await expect(root).toHaveClass(/dark/);
+  await page.emulateMedia({colorScheme: "light"});
+  await expect(root).toHaveClass(/light/);
+  await page.getByRole("link", {name: "Back to sign in"}).click();
+  await page.getByPlaceholder("ranger@gmail.com").fill("ranger@example.test");
+  await page.locator("#password").fill("TestPassword1!");
+  await page.getByRole("button", {name:"Sign In as Ranger"}).click();
+  await page.getByRole("button", {name:"Account menu"}).click();
+  await appearance.selectOption("dark");
+  await expect(root).toHaveClass(/dark/);
+  await page.goto("/trends");
+  await expect(root).toHaveClass(/dark/);
+});

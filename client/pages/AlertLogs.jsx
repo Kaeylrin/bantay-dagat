@@ -278,7 +278,7 @@ export default function AlertLogs() {
               onClick={() => setFilterStatus("all")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "all"
-                  ? "bg-primary text-white"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-card border border-border text-foreground hover:bg-muted"
               }`}
             >
@@ -288,7 +288,7 @@ export default function AlertLogs() {
               onClick={() => setFilterStatus("danger")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "danger"
-                  ? "bg-danger text-white"
+                  ? "bg-danger text-white dark:text-primary-foreground"
                   : "bg-danger/10 border border-danger/30 text-danger hover:bg-danger/20"
               }`}
             >
@@ -298,7 +298,7 @@ export default function AlertLogs() {
               onClick={() => setFilterStatus("caution")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "caution"
-                  ? "bg-caution text-white"
+                  ? "bg-caution text-white dark:text-primary-foreground"
                   : "bg-caution/10 border border-caution/30 text-caution hover:bg-caution/20"
               }`}
             >
@@ -308,7 +308,7 @@ export default function AlertLogs() {
               onClick={() => setFilterStatus("safe")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "safe"
-                  ? "bg-safe text-white"
+                  ? "bg-safe text-white dark:text-primary-foreground"
                   : "bg-safe/10 border border-safe/30 text-safe hover:bg-safe/20"
               }`}
             >
@@ -320,7 +320,7 @@ export default function AlertLogs() {
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-2xs ${
                 filterStatus === "fault"
                   ? "bg-slate-600 text-white"
-                  : "bg-slate-600/10 border border-slate-600/30 text-slate-600 hover:bg-slate-600/20"
+                  : "bg-slate-600/10 border border-slate-600/30 text-muted-foreground hover:bg-slate-600/20"
               }`}
             >
               Sensor Fault

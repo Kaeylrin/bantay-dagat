@@ -328,10 +328,10 @@ export default function HistoricalTrends() {
           ? `${(Math.floor(Number(val) * 100) / 100).toFixed(2)} ${unit || ""}`
           : "—";
       return (
-        <div className="bg-foreground text-card p-2.5 rounded-lg text-xs shadow-xl border border-[#223A5E]">
+        <div className="bg-popover text-popover-foreground p-2.5 rounded-lg text-xs shadow-xl border border-border">
           <p className="font-semibold text-muted-foreground mb-1 text-xs font-mono">{label}</p>
-          <p className="font-bold text-white text-sm font-mono tracking-tight">
-            Value: <span className="text-muted">{formattedVal}</span>
+          <p className="font-bold text-foreground text-sm font-mono tracking-tight">
+            Value: <span className="text-foreground">{formattedVal}</span>
           </p>
         </div>
       );
@@ -343,29 +343,29 @@ export default function HistoricalTrends() {
   const renderChartComponent = (sensorKey, color, domain, unit) => {
     const threshold = THRESHOLDS[sensorKey];
     const yDomain = domain || [0, "auto"];
-    const strokeColor = "#355982";
+    const strokeColor = "hsl(var(--primary))";
 
     return (
       <ResponsiveContainer width="100%" height={250}>
         {graphType === "line" && (
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#D0E1F2" />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#355982" }} interval="preserveStartEnd" />
-            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#355982" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--primary))" }} interval="preserveStartEnd" />
+            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "hsl(var(--primary))" }} />
             <Tooltip content={<CustomTooltip unit={unit} />} />
             {threshold.safeMin !== undefined && (
               <ReferenceLine
                 y={threshold.safeMin}
-                stroke="#15803d"
+                stroke="hsl(var(--safe))"
                 strokeDasharray="5 4"
-                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "#15803d" }}
+                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "hsl(var(--safe))" }}
               />
             )}
             <ReferenceLine
               y={threshold.safeMax}
-              stroke="#9a3412"
+              stroke="hsl(var(--danger))"
               strokeDasharray="5 4"
-              label={{ value: "Safe Max", position: "right", fontSize: 10, fill: "#9a3412" }}
+              label={{ value: "Safe Max", position: "right", fontSize: 10, fill: "hsl(var(--danger))" }}
             />
             <Line
               type="monotone"
@@ -382,27 +382,27 @@ export default function HistoricalTrends() {
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id={`metFill-${sensorKey}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#355982" stopOpacity={0.28} />
-                <stop offset="100%" stopColor="#355982" stopOpacity={0.0} />
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.28} />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#D0E1F2" />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#355982" }} interval="preserveStartEnd" />
-            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#355982" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--primary))" }} interval="preserveStartEnd" />
+            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "hsl(var(--primary))" }} />
             <Tooltip content={<CustomTooltip unit={unit} />} />
             {threshold.safeMin !== undefined && (
               <ReferenceLine
                 y={threshold.safeMin}
-                stroke="#15803d"
+                stroke="hsl(var(--safe))"
                 strokeDasharray="5 4"
-                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "#15803d" }}
+                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "hsl(var(--safe))" }}
               />
             )}
             <ReferenceLine
               y={threshold.safeMax}
-              stroke="#9a3412"
+              stroke="hsl(var(--danger))"
               strokeDasharray="5 4"
-              label={{ value: "Safe Max", position: "right", fontSize: 10, fill: "#9a3412" }}
+              label={{ value: "Safe Max", position: "right", fontSize: 10, fill: "hsl(var(--danger))" }}
             />
             <Area
               type="monotone"
@@ -418,25 +418,25 @@ export default function HistoricalTrends() {
 
         {graphType === "bar" && (
           <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#D0E1F2" />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#355982" }} interval="preserveStartEnd" />
-            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "#355982" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--primary))" }} interval="preserveStartEnd" />
+            <YAxis domain={yDomain} tick={{ fontSize: 10, fill: "hsl(var(--primary))" }} />
             <Tooltip content={<CustomTooltip unit={unit} />} />
             {threshold.safeMin !== undefined && (
               <ReferenceLine
                 y={threshold.safeMin}
-                stroke="#15803d"
+                stroke="hsl(var(--safe))"
                 strokeDasharray="5 4"
-                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "#15803d" }}
+                label={{ value: "Safe Min", position: "right", fontSize: 10, fill: "hsl(var(--safe))" }}
               />
             )}
             <ReferenceLine
               y={threshold.safeMax}
-              stroke="#9a3412"
+              stroke="hsl(var(--danger))"
               strokeDasharray="5 4"
-              label={{ value: "Safe Max", position: "right", fontSize: 10, fill: "#9a3412" }}
+              label={{ value: "Safe Max", position: "right", fontSize: 10, fill: "hsl(var(--danger))" }}
             />
-            <Bar dataKey={sensorKey} fill="#355982" radius={[4, 4, 0, 0]} />
+            <Bar dataKey={sensorKey} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
           </BarChart>
         )}
       </ResponsiveContainer>
@@ -511,7 +511,7 @@ export default function HistoricalTrends() {
                   onClick={() => setTimeRange(range)}
                   className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-colors ${
                     timeRange === range
-                      ? "bg-primary text-white"
+                      ? "bg-primary text-primary-foreground"
                       : "bg-secondary text-foreground hover:bg-secondary/80"
                   }`}
                 >
@@ -652,7 +652,7 @@ export default function HistoricalTrends() {
                       {analytics.faultCount > 0 && (
                         <>
                           {" · "}
-                          <span className="font-bold text-slate-600">
+                          <span className="font-bold text-muted-foreground">
                             {analytics.faultCount} with a water-sensor fault
                           </span>{" "}
                           (excluded from the % scores)

@@ -180,7 +180,7 @@ function RangerItem({ ranger }) {
     <li className="p-3.5 rounded-lg border border-border bg-muted hover:bg-secondary/50 transition-colors">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+          <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
             {(ranger.displayName || ranger.email).charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
@@ -298,7 +298,7 @@ function RangerItem({ ranger }) {
           <button
             onClick={handleDelete}
             disabled={busy}
-            className="px-2 py-1 text-xs font-bold bg-danger text-white rounded hover:bg-danger/80 disabled:opacity-50"
+            className="px-2 py-1 text-xs font-bold bg-danger text-white dark:text-primary-foreground rounded hover:bg-danger/80 disabled:opacity-50"
           >
             {busy ? "Deleting…" : "Yes, Delete"}
           </button>
@@ -601,7 +601,7 @@ export default function AdminPanel() {
               <button
                 type="submit"
                 disabled={creating}
-                className="w-full bg-primary text-white font-semibold text-xs py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 mt-1 shadow-sm"
+                className="w-full bg-primary text-primary-foreground font-semibold text-xs py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 mt-1 shadow-sm"
               >
                 {creating ? (
                   <span className="flex items-center justify-center gap-2">
